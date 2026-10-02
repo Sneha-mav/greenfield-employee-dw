@@ -1,4 +1,4 @@
-"""StagingLoader: bulk-loads the synthesized CSVs into the hr_staging schema (truncate + reload)."""
+"""StagingLoader: bulk-loads the synthesized CSVs into the stg_* tables (truncate + reload)."""
 import logging
 import os
 import time
@@ -10,22 +10,24 @@ from dotenv import load_dotenv
 from mysql.connector import Error
 
 logger = logging.getLogger(__name__)
-load_dotenv()
-# csv file name -> staging table
+
+# csv file name -> staging table (names follow sql/01_staging_ddl.sql and the data dictionary)
 TABLE_MAP = {
-    "employees_synth.csv": "stg_employees",
+    "employees_synth.csv": "stg_employee",
     "employee_history.csv": "stg_employee_history",
-    "projects.csv": "stg_projects",
-    "assignments.csv": "stg_assignments",
-    "reviews.csv": "stg_reviews",
+    "projects.csv": "stg_project",
+    "assignments.csv": "stg_assignment",
+    "reviews.csv": "stg_review",
 }
 
 
 class StagingLoader:
-    def __init__(self, csv_dir="data/synthesized", schema="hr_staging", chunk_size=20_000):
+    def __init__(self, csv_dir="data/synthesized", database=None, chunk_size=20_000):
         load_dotenv()
         self._csv_dir = Path(csv_dir)
-        self._schema = schema
+        self._database = database or os.getenv("DB_NAME")
+        if not self._database:
+            raise ValueError("DB_NAME is not set - add DB_NAME=<your database> to .env")
         self._chunk_size = chunk_size
         self._conn = None
 
@@ -37,7 +39,7 @@ class StagingLoader:
                 port=int(os.getenv("DB_PORT", "3306")),
                 user=os.getenv("DB_USER", "root"),
                 password=os.getenv("DB_PASSWORD", ""),
-                database=self._schema,
+                database=self._database,
                 autocommit=False,
             )
         except Error as exc:
