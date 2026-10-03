@@ -106,7 +106,7 @@ _SQL_EMPLOYEES_CURRENT = """
     JOIN departments d ON d.department_id = e.department_id
     JOIN job_roles   r ON r.job_role_id   = e.job_role_id
     WHERE e.attrition = 0
-    ORDER BY e.employee_id
+    ORDER BY e.employee_id DESC
     LIMIT %s OFFSET %s
 """
 
@@ -131,7 +131,7 @@ _SQL_EMPLOYEES_HISTORY = """
     JOIN employees   e ON e.employee_id   = h.employee_id
     JOIN departments d ON d.department_id = h.department_id
     JOIN job_roles   r ON r.job_role_id   = h.job_role_id
-    ORDER BY h.employee_id, h.effective_from
+    ORDER BY h.employee_id DESC, h.effective_from DESC
     LIMIT %s OFFSET %s
 """
 
@@ -669,7 +669,8 @@ def add_employee(data: dict) -> None:
     try:
         db.call_procedure("sp_load_dim_employee", [emp_id])
     except Exception as e:
-        logger.warning("Failed to sync employee %s to OLAP: %s", emp_id, e)
+        logger.error("Failed to sync employee %s to OLAP: %s", emp_id, e)
+        raise ValidationError(f"Employee created in OLTP, but OLAP sync failed: {e}")
 
 
 def add_project(data: dict) -> None:

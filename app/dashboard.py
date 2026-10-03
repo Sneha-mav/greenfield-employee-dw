@@ -12,7 +12,6 @@ from db_queries import (
 BASE_LAYOUT = dict(
     paper_bgcolor="rgba(0,0,0,0)",
     plot_bgcolor="rgba(0,0,0,0)",
-    height=265,
     font=dict(family="Inter, system-ui, sans-serif", size=11, color="#475569"),
 )
 
@@ -69,6 +68,7 @@ def render_dashboard():
             )
             fig.update_layout(
                 **BASE_LAYOUT,
+                height=265,
                 margin=dict(t=10, b=10, l=10, r=10),
                 showlegend=True,
                 legend=dict(
@@ -97,6 +97,7 @@ def render_dashboard():
             )
             fig_a.update_layout(
                 **BASE_LAYOUT,
+                height=265,
                 showlegend=False,
                 margin=dict(t=15, b=20, l=45, r=15)
             )
@@ -122,6 +123,7 @@ def render_dashboard():
             )
             fig_p.update_layout(
                 **BASE_LAYOUT,
+                height=265,
                 showlegend=False,
                 coloraxis_showscale=False,
                 margin=dict(t=15, b=20, l=10, r=20)
@@ -133,28 +135,69 @@ def render_dashboard():
             st.info("No project data available.")
 
         _section("🎯 Project Resource Allocation")
-        if not df_proj.empty and "Assigned Employees" in df_proj.columns and "Status" in df_proj.columns:
-            alloc_df = df_proj.groupby(["Department", "Status"], as_index=False)["Assigned Employees"].sum()
+        if not df_proj.empty and "Assigned Employees" in df_proj.columns:
+            df_alloc = df_proj.copy()
+            df_alloc["Assigned Employees"] = (
+                pd.to_numeric(df_alloc["Assigned Employees"], errors="coerce")
+                .fillna(0)
+                .astype(int)
+            )
+
+            # Top 10 projects by assigned headcount (sorted ascending for clean top-down bar ranking)
+            top_alloc = df_alloc.nlargest(10, "Assigned Employees").sort_values("Assigned Employees", ascending=True)
+
+            # Calculate real database assignment metrics
+            active_mask = (
+                df_alloc["Status"].str.strip().str.lower() == "active"
+                if "Status" in df_alloc.columns else pd.Series(True, index=df_alloc.index)
+            )
+            active_assignments = int(df_alloc[active_mask]["Assigned Employees"].sum())
+            total_assignments = int(df_alloc["Assigned Employees"].sum())
+
+            # Horizontal Bar Chart for optimal name readability
             fig_alloc = px.bar(
-                alloc_df, x="Department", y="Assigned Employees", color="Status",
-                barmode="stack",
-                color_discrete_map={"Active": "#2563EB", "Completed": "#10B981", "On Hold": "#F59E0B"},
-                labels={"Assigned Employees": "Assigned Headcount", "Department": "Department", "Status": ""}
+                top_alloc,
+                x="Assigned Employees",
+                y="Project Name",
+                orientation="h",
+                color="Assigned Employees",
+                color_continuous_scale=[[0, "#93C5FD"], [1, "#1D4ED8"]],
+                text_auto=True,
+                labels={
+                    "Assigned Employees": "Assigned Employees",
+                    "Project Name": "Project Name",
+                },
+                hover_data={
+                    "Assigned Employees": ":,",
+                    "Project Name": True,
+                    "Department": True if "Department" in top_alloc.columns else False,
+                    "Status": True if "Status" in top_alloc.columns else False,
+                }
+            )
+            has_dept_status = "Department" in top_alloc.columns and "Status" in top_alloc.columns
+            fig_alloc.update_traces(
+                textposition="inside",
+                hovertemplate=(
+                    "<b>%{y}</b><br>"
+                    "Assigned Employees: <b>%{x:,}</b><br>"
+                    "Department: %{customdata[1]}<br>"
+                    "Status: %{customdata[2]}<extra></extra>"
+                ) if has_dept_status else
+                "<b>%{y}</b><br>Assigned Employees: <b>%{x:,}</b><extra></extra>"
             )
             fig_alloc.update_layout(
                 **BASE_LAYOUT,
-                margin=dict(t=30, b=20, l=50, r=15),
-                legend=dict(
-                    orientation="h",
-                    yanchor="bottom",
-                    y=1.02,
-                    xanchor="right",
-                    x=1,
-                    title_text=""
-                )
+                height=280,
+                coloraxis_showscale=False,
+                margin=dict(t=15, b=25, l=10, r=20),
+                xaxis=dict(title="Assigned Employee Count", showgrid=True, gridcolor="#E2E8F0"),
+                yaxis=dict(title="", tickfont=dict(size=10)),
             )
             st.plotly_chart(fig_alloc, width="stretch", config={"displayModeBar": False})
-            st.caption("Aggregated employee allocation by department across active, completed, and on-hold projects.")
+            st.caption(
+                f"Top 10 projects by employee allocation. "
+                f"Active Assignments: **{active_assignments:,}** | Total Tracked: **{total_assignments:,}**"
+            )
         else:
             st.info("No project resourcing data available.")
 
@@ -202,6 +245,7 @@ def render_analytics():
             )
             fig_d.update_layout(
                 **BASE_LAYOUT,
+                height=265,
                 yaxis=dict(range=[0, 5]),
                 showlegend=False,
                 margin=dict(t=15, b=20, l=45, r=15)
@@ -228,6 +272,7 @@ def render_analytics():
                 )
             fig_yoy.update_layout(
                 **BASE_LAYOUT,
+                height=265,
                 yaxis=dict(range=[1, 5]),
                 margin=dict(t=15, b=20, l=45, r=15)
             )
