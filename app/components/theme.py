@@ -245,6 +245,19 @@ def inject_css() -> None:
         [data-testid="stPlotlyChart"] {{
             padding: 4px 8px 0;
         }}
+        /* ── Plotly modebar ─────────────────────────────────────────── */
+        .modebar {{
+            background: transparent !important;
+        }}
+        .modebar-btn {{
+            background: transparent !important;
+        }}
+        .modebar-btn path {{
+            fill: {COLOR_TEXT_MUTED} !important;
+        }}
+        .modebar-btn:hover path {{
+            fill: {COLOR_TEXT_PRIMARY} !important;
+        }}
         [data-testid="stExpander"] {{
             border: 1px solid {COLOR_BORDER};
             border-radius: 8px;
