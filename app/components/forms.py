@@ -130,9 +130,18 @@ def assign_employee_form(projects: list) -> Optional[dict]:
         employee_id = c2.number_input("Employee ID *", min_value=1, step=1)
 
         c3, c4 = st.columns(2)
-        role_on_proj   = c3.text_input("Role on Project *")
+        COMMON_ROLES = [
+            "Developer", "Senior Developer", "Tech Lead", "Project Manager",
+            "Business Analyst", "QA Engineer", "DevOps Engineer", "Data Engineer",
+            "Designer", "Scrum Master", "Product Owner", "Consultant", "Custom...",
+        ]
+        role_selection = c3.selectbox("Role on Project *", COMMON_ROLES)
         allocation_pct = c4.slider("Allocation %", min_value=10, max_value=100,
                                    value=100, step=10)
+
+        role_on_proj = ""
+        if role_selection == "Custom...":
+            role_on_proj = st.text_input("Enter custom role *")
 
         c5, c6 = st.columns(2)
         start_date = c5.date_input("Assignment Start *", value=date.today())
@@ -142,6 +151,8 @@ def assign_employee_form(projects: list) -> Optional[dict]:
 
     if not submitted:
         return None
+    if role_selection != "Custom...":
+        role_on_proj = role_selection
     if not role_on_proj.strip():
         st.error("Role on project is required.")
         return None
