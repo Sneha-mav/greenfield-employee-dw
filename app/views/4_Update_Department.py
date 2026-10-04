@@ -116,9 +116,11 @@ with tab_role:
 with tab_view:
     st.caption("Enter an employee ID to view changes.")
 
-    col_a, col_b = st.columns([2, 1])
+    col_a, _, col_b, _2 = st.columns([2, 0.1, 1, 1])
     view_id  = col_a.number_input("Employee ID", min_value=1, step=1, key="view_scd2_id")
-    view_btn = col_b.button("Load history", use_container_width=True, key="view_scd2_btn")
+    with col_b:
+        st.markdown('<div style="margin-top: 1.9rem;"></div>', unsafe_allow_html=True)
+        view_btn = st.button("Load history", use_container_width=True, key="view_scd2_btn")
 
     if view_btn:
         try:

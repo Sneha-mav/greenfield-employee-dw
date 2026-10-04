@@ -64,9 +64,11 @@ with tab_submit:
 
 with tab_history:
     section_header("Employee Review History")
-    col_a, col_b = st.columns([2, 1])
+    col_a, _, col_b, _2 = st.columns([2, 0.1, 1, 1])
     emp_id   = col_a.number_input("Employee ID", min_value=1, step=1, key="hist_emp_id")
-    load_btn = col_b.button("Load reviews", use_container_width=True, key="load_reviews")
+    with col_b:
+        st.markdown('<div style="margin-top: 1.9rem;"></div>', unsafe_allow_html=True)
+        load_btn = st.button("Load reviews", use_container_width=True, key="load_reviews")
 
     if load_btn:
         try:
