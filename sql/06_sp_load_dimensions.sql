@@ -91,20 +91,13 @@ BEGIN
     -- Step A: build clean versions from OLTP history
     INSERT INTO tmp_emp_versions
         (employee_id, department_name, job_role, job_level, monthly_income, start_date, end_date, is_current)
-    WITH hist_raw AS (
+    WITH hist AS (
         SELECT h.employee_id, d.department_name, r.job_role_name AS job_role,
-               h.job_level, h.monthly_income, h.effective_from, h.history_id
+               h.job_level, h.monthly_income, h.effective_from
         FROM employee_history h
         JOIN departments d ON d.department_id = h.department_id
         JOIN job_roles   r ON r.job_role_id   = h.job_role_id
         WHERE p_employee_id IS NULL OR h.employee_id = p_employee_id
-    ),
-    hist AS (
-        SELECT employee_id, department_name, job_role, job_level, monthly_income, effective_from
-        FROM (
-            SELECT *, ROW_NUMBER() OVER (PARTITION BY employee_id, effective_from ORDER BY history_id DESC) as rn
-            FROM hist_raw
-        ) x WHERE rn = 1
     ),
     flagged AS (
         SELECT hist.*,
@@ -155,24 +148,7 @@ BEGIN
     WHERE d.is_current = 1
       AND t.is_current = 0;
 
-    -- Step C.1: Update tracked attributes for same-day updates on the existing current version
-    UPDATE dim_employee d
-    JOIN tmp_emp_versions t
-      ON t.employee_id = d.employee_id
-    SET d.department_name = t.department_name,
-        d.job_role        = t.job_role,
-        d.job_level       = t.job_level,
-        d.monthly_income  = t.monthly_income,
-        d.end_date        = t.end_date
-    WHERE d.is_current = 1
-      AND t.is_current = 1
-      AND NOT (d.department_name <=> t.department_name
-           AND d.job_role        <=> t.job_role
-           AND d.job_level       <=> t.job_level
-           AND d.monthly_income  <=> t.monthly_income
-           AND d.end_date        <=> t.end_date);
-
-    -- Step C.2: insert versions the dimension has not seen yet (new surrogate key per version)
+    -- Step C: insert versions the dimension has not seen yet (new surrogate key per version)
     INSERT INTO dim_employee
         (employee_id, full_name, gender, hire_date, attrition,
          department_name, job_role, job_level, monthly_income,
@@ -207,9 +183,3 @@ BEGIN
 END//
 
 DELIMITER ;
-
-CALL sp_load_dim_department();
-CALL sp_load_dim_project();
-CALL sp_load_dim_employee(NULL);
-SET SQL_SAFE_UPDATES = 0;
-CALL sp_load_dim_employee(NULL);
