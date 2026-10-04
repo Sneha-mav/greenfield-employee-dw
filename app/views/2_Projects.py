@@ -19,17 +19,20 @@ st.title("Projects")
 st.caption("Create projects, assign employees, and view current allocations.")
 
 @st.cache_data(ttl=300)
-def _load_refs() -> tuple:
+def _load_refs(version: int = 0) -> tuple:
     am = AnalyticsManager()
     pm = ProjectManager()
     departments = am.list_departments()
-    projects    = pm.list_projects(limit=500)
+    projects    = pm.list_projects()
     proj_dicts  = [{"project_id": p.project_id, "project_name": p.project_name}
                    for p in projects]
     return departments, proj_dicts
 
+if "projects_version" not in st.session_state:
+    st.session_state["projects_version"] = 0
+
 try:
-    departments, projects = _load_refs()
+    departments, projects = _load_refs(version=st.session_state["projects_version"])
 except DatabaseError as exc:
     st.error(f"Could not connect to database: {exc}")
     st.stop()
@@ -57,7 +60,7 @@ with tab_create:
             st.session_state["project_success_msg"] = (
                 f"Project **{project.project_name}** created (ID: {project.project_id})."
             )
-            st.cache_data.clear()
+            st.session_state["projects_version"] += 1
             st.rerun()
         except ValidationError as exc:
             st.error(f"Validation error: {exc}")
