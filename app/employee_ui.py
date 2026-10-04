@@ -11,10 +11,11 @@ def render_employees():
     reset_fallback_flag()
     st.markdown("<h1>Employee Management</h1>", unsafe_allow_html=True)
     st.markdown(
-        "<p style='color:#475569;font-size:1.05rem;margin-top:-12px;margin-bottom:28px;'>"
+        "<p style='color:#475569;font-size:1.05rem;margin-top:-12px;margin-bottom:12px;'>"
         "Manage employee records, onboarding and department history.</p>",
         unsafe_allow_html=True,
     )
+    st.markdown("<hr>", unsafe_allow_html=True)
 
     # ── Add new employee ───────────────────────────────────────────────────
     with st.expander("➕  Add New Employee", expanded=False):

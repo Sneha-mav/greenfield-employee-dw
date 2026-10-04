@@ -30,10 +30,11 @@ def render_dashboard():
     reset_fallback_flag()
     st.markdown("<h1 style='margin-bottom:0px;'>Dashboard Overview</h1>", unsafe_allow_html=True)
     st.markdown(
-        "<p style='color:#64748B;font-size:0.88rem;margin-top:0px;margin-bottom:14px;'>"
+        "<p style='color:#64748B;font-size:0.88rem;margin-top:0px;margin-bottom:12px;'>"
         "Enterprise HR Management &amp; Workforce Analytics</p>",
         unsafe_allow_html=True,
     )
+    st.markdown("<hr>", unsafe_allow_html=True)
 
     # Fetch all data first, then emit one banner if fallback was triggered
     data     = get_dashboard_data()
@@ -160,8 +161,6 @@ def render_dashboard():
                 x="Assigned Employees",
                 y="Project Name",
                 orientation="h",
-                color="Assigned Employees",
-                color_continuous_scale=[[0, "#93C5FD"], [1, "#1D4ED8"]],
                 text_auto=True,
                 labels={
                     "Assigned Employees": "Assigned Employees",
@@ -175,7 +174,9 @@ def render_dashboard():
                 }
             )
             has_dept_status = "Department" in top_alloc.columns and "Status" in top_alloc.columns
+            # Use a solid professional blue
             fig_alloc.update_traces(
+                marker_color="#2563EB",
                 textposition="inside",
                 hovertemplate=(
                     "<b>%{y}</b><br>"
@@ -188,10 +189,9 @@ def render_dashboard():
             fig_alloc.update_layout(
                 **BASE_LAYOUT,
                 height=280,
-                coloraxis_showscale=False,
                 margin=dict(t=15, b=25, l=10, r=20),
-                xaxis=dict(title="Assigned Employee Count", showgrid=True, gridcolor="#E2E8F0"),
-                yaxis=dict(title="", tickfont=dict(size=10)),
+                xaxis=dict(title="Assigned Employee Count", showgrid=True, gridcolor="#F1F5F9", zerolinecolor="#CBD5E1"),
+                yaxis=dict(title="", tickfont=dict(size=11, color="#334155")),
             )
             st.plotly_chart(fig_alloc, width="stretch", config={"displayModeBar": False})
             st.caption(
@@ -206,10 +206,11 @@ def render_analytics():
     reset_fallback_flag()
     st.markdown("<h1 style='margin-bottom:0px;'>Workforce Analytics</h1>", unsafe_allow_html=True)
     st.markdown(
-        "<p style='color:#64748B;font-size:0.88rem;margin-top:0px;margin-bottom:14px;'>"
+        "<p style='color:#64748B;font-size:0.88rem;margin-top:0px;margin-bottom:12px;'>"
         "Performance evaluations, longitudinal trends, and department talent rankings.</p>",
         unsafe_allow_html=True,
     )
+    st.markdown("<hr>", unsafe_allow_html=True)
 
     # ── Filters (compact row) ──────────────────────────────────────────
     _section("🔍 Filters")

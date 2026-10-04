@@ -10,10 +10,11 @@ def render_projects():
     reset_fallback_flag()
     st.markdown("<h1>Project Management</h1>", unsafe_allow_html=True)
     st.markdown(
-        "<p style='color:#475569;font-size:1.05rem;margin-top:-12px;margin-bottom:28px;'>"
+        "<p style='color:#475569;font-size:1.05rem;margin-top:-12px;margin-bottom:12px;'>"
         "Track active projects, assign teams and monitor delivery timelines.</p>",
         unsafe_allow_html=True,
     )
+    st.markdown("<hr>", unsafe_allow_html=True)
 
     with st.expander("➕  Create New Project", expanded=False):
         st.info(

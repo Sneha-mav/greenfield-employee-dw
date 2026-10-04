@@ -13,14 +13,14 @@ def apply_custom_css(theme="Light"):
         shadow        = "0 4px 12px rgba(0,0,0,0.45)"
         input_bg      = "#0F172A"
     else:                                   # ← default Light
-        bg            = "#F0F4F8"           # very light blue-grey page
+        bg            = "#F4F7F9"           # very light crisp blue-grey page
         surface       = "#FFFFFF"           # pure white cards / sidebar
         txt_primary   = "#0F172A"           # near-black navy headings
         txt_secondary = "#475569"           # slate-600 labels
-        border        = "#CBD5E1"           # slate-300 borders
-        accent        = "#2563EB"           # blue-600 buttons / highlights
-        accent_hover  = "#1D4ED8"           # blue-700 hover
-        shadow        = "0 2px 8px rgba(15,23,42,0.08)"
+        border        = "#E2E8F0"           # slate-200 subtle borders
+        accent        = "#1D4ED8"           # strong corporate blue
+        accent_hover  = "#1E3A8A"           # darker blue hover
+        shadow        = "0 1px 3px rgba(0,0,0,0.05), 0 1px 2px rgba(0,0,0,0.03)"
         input_bg      = "#FFFFFF"
 
     st.markdown(f"""
@@ -83,14 +83,14 @@ def apply_custom_css(theme="Light"):
             background-color: {surface} !important;
             border: 1px solid {border};
             border-top: 3px solid {accent};
-            border-radius: 8px;
-            padding: 12px 16px !important;
+            border-radius: 6px;
+            padding: 16px 20px !important;
             box-shadow: {shadow};
             transition: transform 0.18s, box-shadow 0.18s;
         }}
         div[data-testid="metric-container"]:hover {{
-            transform: translateY(-2px);
-            box-shadow: 0 6px 16px rgba(37,99,235,0.10);
+            transform: translateY(-1px);
+            box-shadow: 0 4px 6px rgba(0,0,0,0.06);
         }}
         div[data-testid="stMetricValue"] {{
             color: {txt_primary} !important;
@@ -111,9 +111,9 @@ def apply_custom_css(theme="Light"):
         div[data-testid="stExpander"] {{
             background-color: {surface} !important;
             border: 1px solid {border} !important;
-            border-radius: 10px !important;
+            border-radius: 6px !important;
             box-shadow: {shadow};
-            margin-bottom: 14px;
+            margin-bottom: 16px;
         }}
         div[data-testid="stExpander"] summary p {{
             color: {txt_primary} !important;
@@ -125,7 +125,7 @@ def apply_custom_css(theme="Light"):
         div[data-testid="stForm"] {{
             background-color: {surface} !important;
             border: 1px solid {border} !important;
-            border-radius: 10px !important;
+            border-radius: 6px !important;
             padding: 24px !important;
             box-shadow: {shadow};
         }}
@@ -135,17 +135,17 @@ def apply_custom_css(theme="Light"):
             background-color: {accent} !important;
             color: #FFFFFF !important;
             border: none !important;
-            border-radius: 7px !important;
-            font-weight: 600 !important;
+            border-radius: 4px !important;
+            font-weight: 500 !important;
             font-size: 0.92rem !important;
             padding: 0.55rem 1.25rem !important;
             transition: background-color 0.18s, transform 0.15s, box-shadow 0.15s;
-            box-shadow: 0 2px 6px rgba(37,99,235,0.25) !important;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.10) !important;
         }}
         .stButton > button:hover, button[kind="formSubmit"]:hover {{
             background-color: {accent_hover} !important;
             transform: translateY(-1px) !important;
-            box-shadow: 0 4px 10px rgba(37,99,235,0.35) !important;
+            box-shadow: 0 3px 5px rgba(0,0,0,0.12) !important;
         }}
         .stButton > button:active {{
             transform: translateY(0) !important;
@@ -154,9 +154,10 @@ def apply_custom_css(theme="Light"):
         /* ── Inputs ────────────────────────────────────────────────── */
         input, textarea, div[data-baseweb="select"] > div {{
             background-color: {input_bg} !important;
-            border-color: {border} !important;
-            border-radius: 7px !important;
+            border: 1px solid {border} !important;
+            border-radius: 4px !important;
             color: {txt_primary} !important;
+            box-shadow: inset 0 1px 2px rgba(0,0,0,0.02);
         }}
 
         /* ── DataFrames / tables ───────────────────────────────────── */
@@ -164,7 +165,7 @@ def apply_custom_css(theme="Light"):
         div[data-testid="stDataFrameContainer"] {{
             background-color: {surface} !important;
             border: 1px solid {border} !important;
-            border-radius: 10px !important;
+            border-radius: 6px !important;
             overflow: hidden;
             box-shadow: {shadow};
         }}
@@ -231,8 +232,10 @@ def apply_custom_css(theme="Light"):
         /* ── Horizontal rule ───────────────────────────────────────── */
         hr {{
             border: none !important;
-            border-top: 1px solid {border} !important;
-            margin: 1.2rem 0 !important;
+            height: 1px !important;
+            background-color: {border} !important;
+            margin: 1.5rem 0 !important;
+            opacity: 0.7;
         }}
         </style>
     """, unsafe_allow_html=True)

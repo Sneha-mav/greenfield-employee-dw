@@ -10,10 +10,11 @@ def render_reviews():
     reset_fallback_flag()
     st.markdown("<h1>Performance Reviews</h1>", unsafe_allow_html=True)
     st.markdown(
-        "<p style='color:#475569;font-size:1.05rem;margin-top:-12px;margin-bottom:28px;'>"
+        "<p style='color:#475569;font-size:1.05rem;margin-top:-12px;margin-bottom:12px;'>"
         "Submit and track employee performance evaluations.</p>",
         unsafe_allow_html=True,
     )
+    st.markdown("<hr>", unsafe_allow_html=True)
 
     with st.expander("📝  Submit Performance Review", expanded=False):
         st.info(
