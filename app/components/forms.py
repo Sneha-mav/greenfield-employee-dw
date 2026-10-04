@@ -15,7 +15,7 @@ def onboard_employee_form(departments: list, job_roles: list) -> Optional[dict]:
     dept_map = {d["department_name"]: d["department_id"] for d in departments}
     role_map = {r["job_role_name"]:   r["job_role_id"]   for r in job_roles}
 
-    with st.form("onboard_employee", clear_on_submit=True):
+    with st.form("onboard_employee", clear_on_submit=False):
         st.markdown("#### Personal Details")
         c1, c2 = st.columns(2)
         first_name = c1.text_input("First Name *")
@@ -89,7 +89,7 @@ def create_project_form(departments: list) -> Optional[dict]:
     """Render the new-project form. Returns field dict or None."""
     dept_map = {d["department_name"]: d["department_id"] for d in departments}
 
-    with st.form("create_project", clear_on_submit=True):
+    with st.form("create_project", clear_on_submit=False):
         project_name = st.text_input("Project Name *")
         c1, c2 = st.columns(2)
         dept_name = c1.selectbox("Owning Department *", list(dept_map.keys()))
@@ -123,7 +123,7 @@ def assign_employee_form(projects: list) -> Optional[dict]:
     proj_map = {f"[{p['project_id']}] {p['project_name']}": p["project_id"]
                 for p in projects}
 
-    with st.form("assign_employee", clear_on_submit=True):
+    with st.form("assign_employee", clear_on_submit=False):
         st.markdown("#### Assign Employee to Project")
         c1, c2 = st.columns(2)
         proj_label  = c1.selectbox("Project *", list(proj_map.keys()))
@@ -165,7 +165,7 @@ def submit_review_form(projects: list) -> Optional[dict]:
         for p in projects
     })
 
-    with st.form("submit_review", clear_on_submit=True):
+    with st.form("submit_review", clear_on_submit=False):
         employee_id = st.number_input("Employee ID *", min_value=1, step=1)
         c1, c2 = st.columns(2)
         review_date = c1.date_input("Review Date *", value=date.today())
@@ -206,7 +206,7 @@ def update_department_form(departments: list) -> Optional[dict]:
     """Department transfer — triggers SCD Type 2."""
     dept_names = [d["department_name"] for d in departments]
 
-    with st.form("update_department", clear_on_submit=True):
+    with st.form("update_department", clear_on_submit=False):
         c1, c2 = st.columns(2)
         employee_id    = c1.number_input("Employee ID *", min_value=1, step=1)
         new_dept       = c2.selectbox("New Department *", dept_names)
@@ -228,7 +228,7 @@ def change_role_form(job_roles: list) -> Optional[dict]:
     """Role / level / salary change — triggers SCD Type 2."""
     role_names = ["No change"] + [r["job_role_name"] for r in job_roles]
 
-    with st.form("change_role", clear_on_submit=True):
+    with st.form("change_role", clear_on_submit=False):
         employee_id = st.number_input("Employee ID *", min_value=1, step=1)
 
         c1, c2 = st.columns(2)
