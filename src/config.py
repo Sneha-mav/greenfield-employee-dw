@@ -67,3 +67,19 @@ def get_engine() -> Engine:
     if cfg["ssl"]:
         connect_args["ssl"] = {"ca": cfg["ssl_ca"]} if cfg["ssl_ca"] else {"check_hostname": False}
     return create_engine(url, pool_pre_ping=True, pool_recycle=1800, connect_args=connect_args)
+
+
+_shared_engine = None
+
+
+def get_shared_engine() -> Engine:
+    """Return a module-level cached SQLAlchemy engine for pd.read_sql() calls.
+
+    Use this in Streamlit pages that need a DataFrame directly:
+
+        df = pd.read_sql(sql, get_shared_engine())
+    """
+    global _shared_engine
+    if _shared_engine is None:
+        _shared_engine = get_engine()
+    return _shared_engine

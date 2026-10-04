@@ -9,7 +9,6 @@
 -- Run in the mysql client or Workbench (DELIMITER is a client command).
 -- ============================================================
 DELIMITER //
-
 -- ------------------------------------------------------------
 DROP PROCEDURE IF EXISTS sp_load_dim_department//
 CREATE PROCEDURE sp_load_dim_department()
@@ -19,15 +18,13 @@ BEGIN
         ROLLBACK;
         RESIGNAL;
     END;
-
     START TRANSACTION;
     INSERT INTO dim_department (department_id, department_name)
     SELECT department_id, department_name
-    FROM departments
-    ON DUPLICATE KEY UPDATE department_name = VALUES(department_name);
+    FROM departments AS src
+    ON DUPLICATE KEY UPDATE department_name = src.department_name;
     COMMIT;
 END//
-
 -- ------------------------------------------------------------
 DROP PROCEDURE IF EXISTS sp_load_dim_project//
 CREATE PROCEDURE sp_load_dim_project()
@@ -37,19 +34,17 @@ BEGIN
         ROLLBACK;
         RESIGNAL;
     END;
-
     START TRANSACTION;
     INSERT INTO dim_project (project_id, project_name, status, start_date, end_date)
     SELECT project_id, project_name, status, start_date, end_date
-    FROM projects
+    FROM projects AS src
     ON DUPLICATE KEY UPDATE
-        project_name = VALUES(project_name),
-        status       = VALUES(status),
-        start_date   = VALUES(start_date),
-        end_date     = VALUES(end_date);
+        project_name = src.project_name,
+        status       = src.status,
+        start_date   = src.start_date,
+        end_date     = src.end_date;
     COMMIT;
 END//
-
 -- ------------------------------------------------------------
 -- SCD Type 2 for dim_employee
 --   Tracked attributes : department_name, job_role, job_level, monthly_income
@@ -72,7 +67,6 @@ BEGIN
         DROP TEMPORARY TABLE IF EXISTS tmp_emp_versions;
         RESIGNAL;
     END;
-
     DROP TEMPORARY TABLE IF EXISTS tmp_emp_versions;
     CREATE TEMPORARY TABLE tmp_emp_versions (
         employee_id     INT         NOT NULL,
@@ -85,9 +79,7 @@ BEGIN
         is_current      TINYINT(1)  NOT NULL,
         KEY idx_tmp_ver (employee_id, start_date)
     ) ENGINE=InnoDB;
-
     START TRANSACTION;
-
     -- Step A: build clean versions from OLTP history
     INSERT INTO tmp_emp_versions
         (employee_id, department_name, job_role, job_level, monthly_income, start_date, end_date, is_current)
@@ -137,7 +129,6 @@ BEGIN
            COALESCE(next_start - INTERVAL 1 DAY, DATE '9999-12-31'),
            IF(next_start IS NULL, 1, 0)
     FROM versioned;
-
     -- Step B: expire rows that the source has closed
     UPDATE dim_employee d
     JOIN tmp_emp_versions t
@@ -147,7 +138,6 @@ BEGIN
         d.is_current = 0
     WHERE d.is_current = 1
       AND t.is_current = 0;
-
     -- Step C: insert versions the dimension has not seen yet (new surrogate key per version)
     INSERT INTO dim_employee
         (employee_id, full_name, gender, hire_date, attrition,
@@ -164,7 +154,6 @@ BEGIN
                       WHERE d.employee_id = t.employee_id
                         AND d.start_date  = t.start_date)
     ORDER BY t.employee_id, t.start_date;
-
     -- Step D: Type 1 refresh of non-tracked attributes (all versions of the employee)
     UPDATE dim_employee d
     JOIN employees e ON e.employee_id = d.employee_id
@@ -177,9 +166,7 @@ BEGIN
            AND d.gender    <=> e.gender
            AND d.hire_date <=> e.hire_date
            AND d.attrition <=> e.attrition);
-
     COMMIT;
     DROP TEMPORARY TABLE IF EXISTS tmp_emp_versions;
 END//
-
 DELIMITER ;
