@@ -5,7 +5,7 @@
 -- Re-runnable: INSERT IGNORE skips dates that already exist.
 -- Run it against the database that holds your tables (no USE statement on purpose).
 -- ============================================================
-SET SESSION cte_max_recursion_depth = 10000;   
+SET SESSION cte_max_recursion_depth = 10000;   -- MySQL 8 default is 1000; this range needs ~5,900 rows
 
 INSERT IGNORE INTO dim_date (date_key, full_date, year, quarter, month, month_name)
 WITH RECURSIVE calendar AS (

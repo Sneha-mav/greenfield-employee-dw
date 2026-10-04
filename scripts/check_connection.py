@@ -14,4 +14,4 @@ db_name = row["db_name"] if row else "Unknown"
 print(f"Connected successfully! MySQL {version}, database '{db_name}'")
 major_version = version.split(".")[0]
 if major_version.isdigit() and int(major_version) < 8:
-    print("WARNING: MySQL 8.0+ is required for CTEs and window functions.")
+    print("WARNING: MySQL 8.0+ is required for CTEs and window functions.")
