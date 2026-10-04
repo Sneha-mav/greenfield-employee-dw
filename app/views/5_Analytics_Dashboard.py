@@ -46,7 +46,7 @@ def load_dashboard_data(satisfaction_threshold: float, min_reviews: int) -> dict
         "watchlist": pd.DataFrame(
             analytics.at_risk_watchlist(max_satisfaction=satisfaction_threshold, limit=100)
         ),
-        "projects": pd.DataFrame(analytics.project_health(min_reviews=min_reviews)),
+        "projects": pd.DataFrame(analytics.project_health(min_reviews=min_reviews, limit=0)),
         "cohort": pd.DataFrame(analytics.attrition_by_hire_cohort()),
         "salary_band": pd.DataFrame(analytics.salary_band_attrition()),
     }

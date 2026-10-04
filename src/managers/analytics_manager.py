@@ -102,8 +102,14 @@ class AnalyticsManager(BaseManager):
             (int(min_reviews), max(1, min(int(limit), 500))),
         )
     @handle_errors("get allocation-aware project health")
-    def project_health(self, min_reviews: int = 3, limit: int = 50) -> list:
+    def project_health(self, min_reviews: int = 3, limit: int = 0) -> list:
         """Project workload and people signals, including current assignment allocation."""
+        min_reviews = max(1, int(min_reviews))
+        limit = int(limit)
+        if limit > 0:
+            limit_clause = f"LIMIT {max(1, min(limit, 500))}"
+        else:
+            limit_clause = ""
         return self.db.fetch_all(
             "WITH allocation AS ("
             "  SELECT a.project_id, COUNT(*) AS active_assignments,"
@@ -127,9 +133,9 @@ class AnalyticsManager(BaseManager):
             "       COALESCE(a.avg_allocation_pct, 0) AS avg_allocation_pct "
             "FROM reviews_by_project r "
             "LEFT JOIN allocation a ON a.project_id = r.project_id "
-            "WHERE r.review_count >= %s "
-            "ORDER BY r.avg_rating, r.avg_job_satisfaction LIMIT %s",
-            (max(1, int(min_reviews)), max(1, min(int(limit), 500))),
+            f"WHERE r.review_count >= %s "
+            f"ORDER BY r.avg_rating, r.avg_job_satisfaction {limit_clause}",
+            (min_reviews,),
         )
 
     @handle_errors("get hire cohort attrition")
