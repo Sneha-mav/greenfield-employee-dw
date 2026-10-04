@@ -276,7 +276,7 @@ def reset_dashboard_filters(year_values: list[int]) -> None:
         filter_min_reviews=3,
     )
     if year_values:
-        st.session_state.filter_years = (year_values[0], year_values[-1])
+        st.session_state["filter_years"] = (year_values[0], year_values[-1])
 
 
 with st.sidebar:
@@ -284,7 +284,9 @@ with st.sidebar:
     st.subheader("Filters")
     st.selectbox("Department", departments, key="filter_department")
     if years:
-        st.select_slider("Review years", years, value=(years[0], years[-1]), key="filter_years")
+        if "filter_years" not in st.session_state:
+            st.session_state["filter_years"] = (years[0], years[-1])
+        st.select_slider("Review years", years, key="filter_years")
     st.selectbox("Project status", project_statuses, key="filter_project_status")
     st.slider("Minimum reviews", 3, 20, key="filter_min_reviews")
     st.slider("Retention review threshold", 1.0, 3.0, step=0.1, key="filter_satisfaction_threshold")
