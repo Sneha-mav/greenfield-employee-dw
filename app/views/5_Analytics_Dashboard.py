@@ -302,6 +302,9 @@ with st.sidebar:
         st.rerun()
 
 selected_years = st.session_state.get("filter_years", (years[0], years[-1]) if years else (None, None))
+if not isinstance(selected_years, (tuple, list)) or len(selected_years) != 2:
+    selected_years = (years[0], years[-1]) if years else (None, None)
+    st.session_state["filter_years"] = selected_years
 trend_view = trend[trend["review_year"].between(*selected_years)].copy() if years else trend.copy()
 attrition_view = filter_frame(attrition, department=st.session_state.filter_department)
 performers_view = filter_frame(data["performers"], department=st.session_state.filter_department)
