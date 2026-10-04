@@ -71,8 +71,11 @@ class EmployeeManager(BaseManager):
             conditions.append("attrition = %s")
             params.append(int(attrition))
         if search:
-            conditions.append("(first_name LIKE %s OR last_name LIKE %s OR email LIKE %s)")
-            params.extend([f"%{search}%"] * 3)
+            conditions.append(
+                "(first_name LIKE %s OR last_name LIKE %s OR email LIKE %s "
+                "OR CONCAT(first_name, ' ', last_name) LIKE %s)"
+            )
+            params.extend([f"%{search}%"] * 4)
         where = f"WHERE {' AND '.join(conditions)}" if conditions else ""
         limit = max(1, min(int(limit), 500))
         offset = max(0, int(offset))
