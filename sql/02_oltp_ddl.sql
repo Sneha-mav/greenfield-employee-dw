@@ -89,8 +89,6 @@ CREATE TABLE IF NOT EXISTS reviews (
     job_satisfaction         TINYINT,
     environment_satisfaction TINYINT,
     salary_hike_pct          DECIMAL(6,2),
-    manager_comments         TEXT,
-    goals                    TEXT,
     CONSTRAINT fk_rev_emp  FOREIGN KEY (employee_id) REFERENCES employees(employee_id),
     CONSTRAINT fk_rev_proj FOREIGN KEY (project_id)  REFERENCES projects(project_id),
     CONSTRAINT chk_rev_rating CHECK (performance_rating BETWEEN 1 AND 5),
