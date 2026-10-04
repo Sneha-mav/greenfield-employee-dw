@@ -58,10 +58,4 @@ uv pip install --python .venv/bin/python -r requirements.txt
 .venv/bin/python -m pytest -q
 ```
 
-## Delivery audit
 
-See [`docs/requirement-audit.md`](docs/requirement-audit.md) for the implementation checklist, feature-preservation map, and the remaining editable-diagram, PR, and cloud-deployment tasks.
-
-## Security
-
-`.env` is intentionally ignored by Git. Use Streamlit Community Cloud secrets for deployment rather than committing MySQL credentials.
