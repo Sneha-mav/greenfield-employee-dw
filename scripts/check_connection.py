@@ -4,13 +4,14 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from sqlalchemy import text
+from src.db_manager import DatabaseConnection
 
-from src.config import get_engine
+db = DatabaseConnection()
+row = db.fetch_one("SELECT VERSION() AS version, DATABASE() AS db_name")
+version = row["version"] if row else "Unknown"
+db_name = row["db_name"] if row else "Unknown"
 
-with get_engine().connect() as conn:
-    version = conn.execute(text("SELECT VERSION()")).scalar()
-    db = conn.execute(text("SELECT DATABASE()")).scalar()
-print(f"Connected. MySQL {version}, database '{db}'")
-if int(version.split(".")[0]) < 8:
-    print("WARNING: MySQL 8.0+ is required (CTEs, window functions).")
+print(f"Connected successfully! MySQL {version}, database '{db_name}'")
+major_version = version.split(".")[0]
+if major_version.isdigit() and int(major_version) < 8:
+    print("WARNING: MySQL 8.0+ is required for CTEs and window functions.")
