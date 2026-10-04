@@ -38,6 +38,10 @@ tab_create, tab_assign, tab_view = st.tabs(["Create Project", "Assign Employee",
 
 with tab_create:
     section_header("New Project")
+
+    if "project_success_msg" in st.session_state:
+        st.success(st.session_state.pop("project_success_msg"))
+
     data = create_project_form(departments)
     if data is not None:
         try:
@@ -50,7 +54,7 @@ with tab_create:
             )
             pm = ProjectManager()
             project = pm.create(project, refresh_warehouse=True)
-            st.success(
+            st.session_state["project_success_msg"] = (
                 f"Project **{project.project_name}** created (ID: {project.project_id})."
             )
             st.cache_data.clear()
