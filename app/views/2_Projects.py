@@ -54,6 +54,7 @@ with tab_create:
                 f"Project **{project.project_name}** created (ID: {project.project_id})."
             )
             st.cache_data.clear()
+            st.rerun()
         except ValidationError as exc:
             st.error(f"Validation error: {exc}")
         except DatabaseError as exc:
