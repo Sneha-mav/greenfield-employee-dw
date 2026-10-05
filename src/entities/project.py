@@ -11,7 +11,7 @@ class Project:
     """A row from the OLTP ``projects`` table."""
 
     FIELDS = ("project_id", "project_name", "department_id", "status", "start_date", "end_date")
-    VALID_STATUSES = ("Active", "Completed", "On Hold")
+    VALID_STATUSES = ("Active", "Completed", "On Hold", "Unknown")
 
     def __init__(
         self,
