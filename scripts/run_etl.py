@@ -14,7 +14,7 @@ steps = [
     ("sp_load_dim_department",              None),
     ("sp_load_dim_project",                 None),
     ("sp_load_dim_employee",                (None,)),
-    ("sp_load_fact_performance_reviews",    None),
+    ("sp_load_fact_performance_reviews",    (50000,)),
 ]
 
 for name, args in steps:
