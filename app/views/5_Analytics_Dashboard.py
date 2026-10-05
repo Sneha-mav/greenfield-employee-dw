@@ -283,7 +283,15 @@ def reset_dashboard_filters(year_values: list[int]) -> None:
 if years:
     _fy = st.session_state.get("filter_years")
     if not isinstance(_fy, (tuple, list)) or len(_fy) != 2:
-        st.session_state["filter_years"] = (years[0], years[-1])
+        st.session_state["filter_years"] = (int(years[0]), int(years[-1]))
+    else:
+        # Ensure stored values are plain int — not Decimal or numpy int
+        _y0, _y1 = int(_fy[0]), int(_fy[1])
+        # Also ensure stored values are still valid options in the current years list
+        if _y0 not in years or _y1 not in years:
+            st.session_state["filter_years"] = (int(years[0]), int(years[-1]))
+        elif (_y0, _y1) != (_fy[0], _fy[1]):
+            st.session_state["filter_years"] = (_y0, _y1)
 
 with st.sidebar:
     st.divider()
@@ -309,7 +317,7 @@ selected_years = st.session_state.get("filter_years", (years[0], years[-1]) if y
 if not isinstance(selected_years, (tuple, list)) or len(selected_years) != 2:
     selected_years = (years[0], years[-1]) if years else (None, None)
 selected_years = (int(selected_years[0]), int(selected_years[1]))
-trend_view = trend[trend["review_year"].between(*selected_years)].copy() if years else trend.copy()
+trend_view = trend[trend["review_year"].astype(int).between(*selected_years)].copy() if years else trend.copy()
 attrition_view = filter_frame(attrition, department=st.session_state.filter_department)
 performers_view = filter_frame(data["performers"], department=st.session_state.filter_department)
 watchlist_view = filter_frame(data["watchlist"], department=st.session_state.filter_department)
