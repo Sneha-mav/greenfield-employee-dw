@@ -8,3 +8,7 @@ venv/
 .DS_Store
 data/synthesized/*.csv
 !data/synthesized/.gitkeep
+
+# SSL certificates
+ca.pem
+*.pem

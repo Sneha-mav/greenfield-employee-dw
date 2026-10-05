@@ -20,8 +20,13 @@ from app.components.theme import (
     ATTRITION_HIGH, SATISFACTION_LOW,
 )
 
-# Suppress Plotly toolbar on all charts
-_CFG = {"displayModeBar": False}
+# Suppress Plotly toolbar on all charts except fullscreen
+_CFG = {"displayModeBar": "hover", "modeBarButtonsToRemove": [
+    "zoom2d", "pan2d", "select2d", "lasso2d", "zoomIn2d", "zoomOut2d",
+    "autoScale2d", "resetScale2d", "hoverClosestCartesian",
+    "hoverCompareCartesian", "toggleSpikelines",
+    "sendDataToCloud", "editInChartStudio",
+], "modeBarButtonsToAdd": ["toImage"], "displaylogo": False}
 
 
 def yoy_trend_line(df: pd.DataFrame) -> go.Figure:
@@ -83,22 +88,34 @@ def yoy_trend_line(df: pd.DataFrame) -> go.Figure:
 def attrition_by_dept_bar(
     df: pd.DataFrame, attention_threshold: float = ATTRITION_HIGH
 ) -> go.Figure:
-    """Readable department columns with a configurable attention threshold."""
+    """Readable department columns with a configurable attention threshold.
+    Bars are split into three traces by risk band so legend filtering works.
+    """
     if df.empty:
         return go.Figure()
 
     df = df.sort_values("attrition_rate_pct", ascending=False).copy()
-    colors = [attrition_color(float(v)) for v in df["attrition_rate_pct"]]
+    df["attrition_rate_pct"] = df["attrition_rate_pct"].apply(float)
 
-    fig = go.Figure(
-        go.Bar(
-            x=df["department_name"],
-            y=df["attrition_rate_pct"].apply(float),
-            marker_color=colors,
-            text=df["attrition_rate_pct"].apply(lambda v: f"{float(v):.1f}%"),
+    fig = go.Figure()
+
+    bands = [
+        ("Low  <10%",       CHART_POSITIVE, df[df["attrition_rate_pct"] < 10]),
+        ("Moderate 10–15%", CHART_WARNING,  df[(df["attrition_rate_pct"] >= 10) & (df["attrition_rate_pct"] <= 15)]),
+        ("High  >15%",      CHART_NEGATIVE, df[df["attrition_rate_pct"] > 15]),
+    ]
+    for label, color, band_df in bands:
+        if band_df.empty:
+            continue
+        fig.add_trace(go.Bar(
+            x=band_df["department_name"],
+            y=band_df["attrition_rate_pct"],
+            name=label,
+            marker_color=color,
+            text=band_df["attrition_rate_pct"].apply(lambda v: f"{v:.1f}%"),
             textposition="outside",
             textfont=dict(size=11, color=COLOR_TEXT_PRIMARY),
-            customdata=df[["headcount", "leavers"]].values,
+            customdata=band_df[["headcount", "leavers"]].values,
             hovertemplate=(
                 "<b>%{x}</b><br>"
                 "Attrition: %{y:.1f}%<br>"
@@ -106,8 +123,8 @@ def attrition_by_dept_bar(
                 "Leavers: %{customdata[1]:,}"
                 "<extra></extra>"
             ),
-        )
-    )
+        ))
+
     fig.add_hline(
         y=attention_threshold,
         line_dash="dash",
@@ -115,10 +132,8 @@ def attrition_by_dept_bar(
         opacity=0.85,
     )
     fig.add_annotation(
-        x=1,
-        y=attention_threshold,
-        xref="paper",
-        yref="y",
+        x=1, y=attention_threshold,
+        xref="paper", yref="y",
         text=f"Attention threshold · {attention_threshold:.0f}%",
         showarrow=False,
         xanchor="right",
@@ -131,22 +146,12 @@ def attrition_by_dept_bar(
     maximum = max(float(df["attrition_rate_pct"].max()), float(attention_threshold))
     fig.update_xaxes(title_text="")
     fig.update_yaxes(title_text="Attrition %", range=[0, maximum * 1.28])
+    fig.update_layout(
+        barmode="stack",
+        legend=dict(title_text="Attrition risk", x=1.0, xanchor="right", y=1.0),
+        margin=dict(l=0, r=8, t=66, b=0),
+    )
     apply_chart_theme(fig, "Attrition rate by department")
-    fig.update_layout(margin=dict(l=0, r=8, t=66, b=0))
-    # Add legend key for attrition risk colours
-    for _label, _color in [
-        ("Low  <10%",       CHART_POSITIVE),
-        ("Moderate 10–15%", CHART_WARNING),
-        ("High  >15%",      CHART_NEGATIVE),
-    ]:
-        fig.add_trace(go.Scatter(
-            x=[None], y=[None],
-            mode="markers",
-            marker=dict(size=10, color=_color, symbol="square"),
-            name=_label,
-            showlegend=True,
-        ))
-    fig.update_layout(legend=dict(title_text="Attrition risk", x=1.0, xanchor="right", y=1.0))
     return fig
 
 
@@ -228,7 +233,9 @@ def salary_vs_attrition_scatter(df: pd.DataFrame) -> go.Figure:
 
 
 def cohort_attrition_bar(df: pd.DataFrame) -> go.Figure:
-    """Bar + dotted line: attrition rate and avg rating by hire year cohort."""
+    """Bar + dotted line: attrition rate and avg rating by hire year cohort.
+    Bars are split into three traces by risk band so legend filtering works.
+    """
     if df.empty:
         return go.Figure()
 
@@ -238,17 +245,26 @@ def cohort_attrition_bar(df: pd.DataFrame) -> go.Figure:
 
     fig = make_subplots(specs=[[{"secondary_y": True}]])
 
-    colors = [attrition_color(v) for v in plot_df["attrition_pct"]]
-    fig.add_trace(
-        go.Bar(
-            x=plot_df["hire_year"],
-            y=plot_df["attrition_pct"],
-            name="Attrition %",
-            marker_color=colors,
-            hovertemplate="Cohort %{x}<br>Attrition: %{y:.1f}%<extra></extra>",
-        ),
-        secondary_y=False,
-    )
+    # Split bars into three risk-band traces so clicking legend filters correctly
+    bands = [
+        ("Low  <10%",       CHART_POSITIVE, plot_df[plot_df["attrition_pct"] < 10]),
+        ("Moderate 10–15%", CHART_WARNING,  plot_df[(plot_df["attrition_pct"] >= 10) & (plot_df["attrition_pct"] <= 15)]),
+        ("High  >15%",      CHART_NEGATIVE, plot_df[plot_df["attrition_pct"] > 15]),
+    ]
+    for label, color, band_df in bands:
+        if band_df.empty:
+            continue
+        fig.add_trace(
+            go.Bar(
+                x=band_df["hire_year"],
+                y=band_df["attrition_pct"],
+                name=label,
+                marker_color=color,
+                hovertemplate="Cohort %{x}<br>Attrition: %{y:.1f}%<extra></extra>",
+            ),
+            secondary_y=False,
+        )
+
     fig.add_trace(
         go.Scatter(
             x=plot_df["hire_year"],
@@ -262,22 +278,10 @@ def cohort_attrition_bar(df: pd.DataFrame) -> go.Figure:
         secondary_y=True,
     )
     fig.update_yaxes(title_text="Attrition %", secondary_y=False)
-    fig.update_yaxes(title_text="Avg Rating",  secondary_y=True, range=[1, 5])
+    fig.update_yaxes(title_text="Avg Rating",  secondary_y=True, range=[1, 5], showgrid=False)
     fig.update_xaxes(tickformat="d")
+    fig.update_layout(barmode="stack", legend=dict(title_text="Attrition risk"))
     apply_chart_theme(fig, "Attrition by Hire Year Cohort")
-    # Add legend key for attrition risk colours
-    for _label, _color in [
-        ("Low  <10%",       CHART_POSITIVE),
-        ("Moderate 10–15%", CHART_WARNING),
-        ("High  >15%",      CHART_NEGATIVE),
-    ]:
-        fig.add_trace(go.Scatter(
-            x=[None], y=[None],
-            mode="markers",
-            marker=dict(size=10, color=_color, symbol="square"),
-            name=_label,
-            showlegend=True,
-        ))
     return fig
 
 

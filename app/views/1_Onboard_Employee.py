@@ -67,21 +67,58 @@ if data is not None:
 st.divider()
 section_header("Search Employee")
 
-col1, col2 = st.columns([1, 3])
-with col1:
-    lookup_id = st.number_input("Employee ID", min_value=1, step=1, key="lookup_id")
-    do_lookup = st.button("Search", use_container_width=True)
+search_mode = st.radio("Search by", ["Employee ID", "Name"], horizontal=True)
 
-if do_lookup:
-    try:
-        em  = EmployeeManager()
-        emp = em.get_by_id(int(lookup_id))
-        col_a, col_b, col_c = st.columns(3)
-        col_a.metric("Name",           emp.full_name)
-        col_b.metric("Department ID",  str(emp.department_id))
-        col_c.metric("Job Level",      str(emp.job_level))
-        col_a.metric("Monthly Income", f"${emp.monthly_income:,.0f}")
-        col_b.metric("Hire Date",      str(emp.hire_date))
-        col_c.metric("Status",         "Active" if emp.is_active else "Inactive")
-    except DatabaseError as exc:
-        st.warning(str(exc))
+if search_mode == "Employee ID":
+    col1, col2 = st.columns([1, 3])
+    with col1:
+        lookup_id = st.number_input("Employee ID", min_value=1, step=1, key="lookup_id")
+        do_lookup = st.button("Search", use_container_width=True)
+
+    if do_lookup:
+        try:
+            em  = EmployeeManager()
+            emp = em.get_by_id(int(lookup_id))
+            col_a, col_b, col_c = st.columns(3)
+            col_a.metric("Name",           emp.full_name)
+            col_b.metric("Department ID",  str(emp.department_id))
+            col_c.metric("Job Level",      str(emp.job_level))
+            col_a.metric("Monthly Income", f"${emp.monthly_income:,.0f}")
+            col_b.metric("Hire Date",      str(emp.hire_date))
+            col_c.metric("Status",         "Active" if emp.is_active else "Inactive")
+        except DatabaseError as exc:
+            st.warning(str(exc))
+
+else:
+    col1, col2 = st.columns([2, 1])
+    with col1:
+        name_query = st.text_input("Enter first name, last name or part of name")
+    with col2:
+        st.write("")
+        st.write("")
+        do_name_search = st.button("Search", use_container_width=True, key="name_search_btn")
+
+    if do_name_search:
+        if not name_query.strip():
+            st.warning("Please enter a name to search.")
+        else:
+            try:
+                em      = EmployeeManager()
+                results = em.list_employees(search=name_query.strip(), limit=20)
+                if not results:
+                    st.warning(f"No employees found matching '{name_query}'.")
+                else:
+                    import pandas as pd
+                    st.caption(f"{len(results)} result(s) found")
+                    df = pd.DataFrame([{
+                        "ID":             e.employee_id,
+                        "Name":           e.full_name,
+                        "Department ID":  e.department_id,
+                        "Job Level":      e.job_level,
+                        "Monthly Income": f"${e.monthly_income:,.0f}",
+                        "Hire Date":      str(e.hire_date),
+                        "Status":         "Active" if e.is_active else "Inactive",
+                    } for e in results])
+                    st.dataframe(df, use_container_width=True, hide_index=True)
+            except DatabaseError as exc:
+                st.warning(str(exc))
