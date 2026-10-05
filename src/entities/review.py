@@ -4,7 +4,7 @@ from datetime import date
 from typing import Any, Optional
 
 from src.db_manager import ValidationError
-from src.entities.validators import require_int_range, to_date
+from src.entities.validators import require_int_range, require_positive, to_date
 
 
 class Review:
@@ -56,13 +56,69 @@ class Review:
         self._performance_rating = require_int_range(value, "performance_rating", 1, 5)
 
     @property
+    def review_score(self) -> Optional[float]:
+        return self._review_score
+
+    @review_score.setter
+    def review_score(self, value: Any) -> None:
+        if value is None:
+            self._review_score = None
+            return
+        try:
+            v = float(value)
+        except (TypeError, ValueError):
+            raise ValidationError("review_score must be a number") from None
+        if not 0 <= v <= 100:
+            raise ValidationError("review_score must be between 0 and 100")
+        self._review_score = round(v, 2)
+
+    @property
+    def job_satisfaction(self) -> Optional[int]:
+        return self._job_satisfaction
+
+    @job_satisfaction.setter
+    def job_satisfaction(self, value: Any) -> None:
+        if value is None:
+            self._job_satisfaction = None
+            return
+        self._job_satisfaction = require_int_range(value, "job_satisfaction", 1, 4)
+
+    @property
+    def environment_satisfaction(self) -> Optional[int]:
+        return self._environment_satisfaction
+
+    @environment_satisfaction.setter
+    def environment_satisfaction(self, value: Any) -> None:
+        if value is None:
+            self._environment_satisfaction = None
+            return
+        self._environment_satisfaction = require_int_range(
+            value, "environment_satisfaction", 1, 4
+        )
+
+    @property
+    def salary_hike_pct(self) -> Optional[float]:
+        return self._salary_hike_pct
+
+    @salary_hike_pct.setter
+    def salary_hike_pct(self, value: Any) -> None:
+        if value is None:
+            self._salary_hike_pct = None
+            return
+        try:
+            v = float(value)
+        except (TypeError, ValueError):
+            raise ValidationError("salary_hike_pct must be a number") from None
+        if v < 0:
+            raise ValidationError("salary_hike_pct must be >= 0")
+        self._salary_hike_pct = round(v, 2)
+
+    @property
     def is_high_performer(self) -> bool:
-        """True when the rating is 4 or 5."""
         return self.performance_rating >= self.HIGH_PERFORMER_RATING
 
     @classmethod
     def from_row(cls, row: dict) -> "Review":
-        """Build a Review from a database row (extra keys are ignored)."""
         data = {f: row[f] for f in cls.FIELDS if f in row}
         try:
             return cls(**data)
@@ -70,7 +126,6 @@ class Review:
             raise ValidationError(f"Row is missing required review fields: {exc}") from exc
 
     def to_dict(self) -> dict:
-        """Return all table columns as a dict."""
         return {f: getattr(self, f) for f in self.FIELDS}
 
     def __repr__(self) -> str:

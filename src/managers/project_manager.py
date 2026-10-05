@@ -37,9 +37,9 @@ class ProjectManager(BaseManager):
     @handle_errors("list projects")
     def list_projects(
         self, status: Optional[str] = None, department_id: Optional[int] = None,
-        limit: int = 50, offset: int = 0,
+        limit: int = 0, offset: int = 0,
     ) -> list:
-        """Return a page of projects, optionally filtered by status/department."""
+        """Return projects, optionally filtered by status/department. limit=0 means all."""
         conditions, params = [], []
         if status is not None:
             conditions.append("status = %s")
@@ -48,12 +48,18 @@ class ProjectManager(BaseManager):
             conditions.append("department_id = %s")
             params.append(department_id)
         where = f"WHERE {' AND '.join(conditions)}" if conditions else ""
-        limit = max(1, min(int(limit), 500))
         offset = max(0, int(offset))
-        rows = self.db.fetch_all(
-            f"SELECT * FROM projects {where} ORDER BY project_id LIMIT %s OFFSET %s",
-            (*params, limit, offset),
-        )
+        limit = int(limit)
+        if limit > 0:
+            rows = self.db.fetch_all(
+                f"SELECT * FROM projects {where} ORDER BY project_id LIMIT %s OFFSET %s",
+                (*params, limit, offset),
+            )
+        else:
+            rows = self.db.fetch_all(
+                f"SELECT * FROM projects {where} ORDER BY project_id",
+                tuple(params),
+            )
         return [Project.from_row(row) for row in rows]
 
     @handle_errors("update project")
