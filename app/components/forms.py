@@ -323,32 +323,33 @@ def change_role_form(job_roles: list) -> Optional[dict]:
     """Role / level / salary change — triggers SCD Type 2."""
     role_names = ["No change"] + [r["job_role_name"] for r in job_roles]
 
-    with st.form("change_role", clear_on_submit=False):
-        employee_id = st.number_input("Employee ID *", min_value=1, step=1)
+    employee_id    = st.number_input("Employee ID *", min_value=1, step=1, key="cr_employee_id")
 
-        c1, c2 = st.columns(2)
-        role_name      = c1.selectbox("New Job Role", role_names,
-                                      help="Select 'No change' to leave the role as-is.")
-        effective_date = c2.date_input("Effective Date *", value=date.today())
+    c1, c2 = st.columns(2)
+    role_name      = c1.selectbox("New Job Role", role_names,
+                                  help="Select 'No change' to leave the role as-is.",
+                                  key="cr_role_name")
+    effective_date = c2.date_input("Effective Date *", value=date.today(), key="cr_effective_date")
 
-        c3, c4 = st.columns(2)
-        change_level  = c3.checkbox("Update Job Level")
-        change_salary = c4.checkbox("Update Monthly Income")
+    c3, c4 = st.columns(2)
+    change_level  = c3.checkbox("Update Job Level",      key="cr_change_level")
+    change_salary = c4.checkbox("Update Monthly Income", key="cr_change_salary")
 
-        job_level      = None
-        monthly_income = None
+    job_level      = None
+    monthly_income = None
 
-        if change_level:
-            job_level = st.slider("New Job Level", min_value=1, max_value=5, value=3)
+    if change_level:
+        job_level = st.slider("New Job Level", min_value=1, max_value=5, value=3,
+                              key="cr_job_level")
 
-        if change_salary:
-            monthly_income = st.number_input(
-                "New Monthly Income ($)", min_value=1000, max_value=100000,
-                value=5000, step=100,
-            )
+    if change_salary:
+        monthly_income = st.number_input(
+            "New Monthly Income ($)", min_value=1000, max_value=100000,
+            value=5000, step=100, key="cr_monthly_income",
+        )
 
-        submitted = st.form_submit_button("Apply Change", type="primary",
-                                          use_container_width=True)
+    submitted = st.button("Apply Change", type="primary",
+                          use_container_width=True, key="cr_submit")
 
     if not submitted:
         return None
