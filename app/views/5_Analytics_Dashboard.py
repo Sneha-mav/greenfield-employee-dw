@@ -279,13 +279,17 @@ def reset_dashboard_filters(year_values: list[int]) -> None:
         st.session_state["filter_years"] = (year_values[0], year_values[-1])
 
 
+# Guard against stale/invalid filter_years in session state before widget is created
+if years:
+    _fy = st.session_state.get("filter_years")
+    if not isinstance(_fy, (tuple, list)) or len(_fy) != 2:
+        st.session_state["filter_years"] = (years[0], years[-1])
+
 with st.sidebar:
     st.divider()
     st.subheader("Filters")
     st.selectbox("Department", departments, key="filter_department")
     if years:
-        if "filter_years" not in st.session_state:
-            st.session_state["filter_years"] = (years[0], years[-1])
         st.select_slider("Review years", years, key="filter_years")
     st.selectbox("Project status", project_statuses, key="filter_project_status")
     st.slider("Minimum reviews", 3, 20, key="filter_min_reviews")
@@ -304,7 +308,7 @@ with st.sidebar:
 selected_years = st.session_state.get("filter_years", (years[0], years[-1]) if years else (None, None))
 if not isinstance(selected_years, (tuple, list)) or len(selected_years) != 2:
     selected_years = (years[0], years[-1]) if years else (None, None)
-    st.session_state["filter_years"] = selected_years
+selected_years = (int(selected_years[0]), int(selected_years[1]))
 trend_view = trend[trend["review_year"].between(*selected_years)].copy() if years else trend.copy()
 attrition_view = filter_frame(attrition, department=st.session_state.filter_department)
 performers_view = filter_frame(data["performers"], department=st.session_state.filter_department)
