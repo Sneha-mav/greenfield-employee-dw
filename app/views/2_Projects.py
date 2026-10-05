@@ -7,7 +7,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 import streamlit as st
 
 from app.components.theme import inject_css, section_header
-from app.components.forms import assign_employee_form, create_project_form
+from app.components.forms import assign_multiple_employees_form, create_project_form
 from app.components.tables import assignments_table
 from src.db_manager import DatabaseError, ValidationError
 from src.entities.project import Project
@@ -37,7 +37,7 @@ except DatabaseError as exc:
     st.error(f"Could not connect to database: {exc}")
     st.stop()
 
-tab_create, tab_assign, tab_view = st.tabs(["Create Project", "Assign Employee", "View Assignments"])
+tab_create, tab_assign, tab_view, tab_search = st.tabs(["Create Project", "Assign Employee", "View Assignments", "Search Assignment"])
 
 with tab_create:
     section_header("New Project")
@@ -72,19 +72,54 @@ with tab_assign:
     if not projects:
         st.caption("No projects found. Create a project first.")
     else:
-        data = assign_employee_form(projects)
-        if data is not None:
-            try:
-                pm = ProjectManager()
-                assignment_id = pm.assign_employee(**data)
-                st.success(
-                    f"Employee {data['employee_id']} assigned to project "
-                    f"{data['project_id']} (Assignment ID: {assignment_id})."
-                )
-            except ValidationError as exc:
-                st.error(f"Validation error: {exc}")
-            except DatabaseError as exc:
-                st.error(f"Database error: {exc}")
+        assignments = assign_multiple_employees_form(projects)
+        if assignments is not None:
+            success, failed = [], []
+            for data in assignments:
+                try:
+                    pm = ProjectManager()
+                    assignment_id = pm.assign_employee(**data)
+                    success.append(f"Employee {data['employee_id']} → Assignment ID {assignment_id}")
+                except (ValidationError, DatabaseError) as exc:
+                    failed.append(f"Employee {data['employee_id']}: {exc}")
+            if success:
+                st.success(f"{len(success)} assignment(s) created:\n" + "\n".join(f"- {s}" for s in success))
+            if failed:
+                for f in failed:
+                    st.error(f)
+
+with tab_search:
+    section_header("Search Assignment by ID")
+    assignment_id_input = st.number_input("Assignment ID", min_value=1, step=1, key="search_assignment_id")
+    if st.button("Search", use_container_width=True, key="btn_search_assignment"):
+        try:
+            pm   = ProjectManager()
+            rows = pm.db.fetch_all(
+                "SELECT a.assignment_id, a.employee_id, "
+                "CONCAT(e.first_name, ' ', e.last_name) AS employee_name, "
+                "p.project_name, a.role_on_project, a.allocation_pct, "
+                "a.start_date, a.end_date "
+                "FROM assignments a "
+                "JOIN employees e ON e.employee_id = a.employee_id "
+                "JOIN projects p ON p.project_id = a.project_id "
+                "WHERE a.assignment_id = %s",
+                (int(assignment_id_input),),
+            )
+            if not rows:
+                st.warning(f"No assignment found with ID {int(assignment_id_input)}.")
+            else:
+                row = rows[0]
+                c1, c2, c3 = st.columns(3)
+                c1.metric("Assignment ID",  str(row["assignment_id"]))
+                c2.metric("Employee",       row["employee_name"])
+                c3.metric("Employee ID",    str(row["employee_id"]))
+                c1.metric("Project",        row["project_name"])
+                c2.metric("Role",           row["role_on_project"])
+                c3.metric("Allocation %",   str(row["allocation_pct"]))
+                c1.metric("Start Date",     str(row["start_date"]))
+                c2.metric("End Date",       str(row["end_date"]) if row["end_date"] else "Ongoing")
+        except DatabaseError as exc:
+            st.error(str(exc))
 
 with tab_view:
     section_header("View Project Assignments")

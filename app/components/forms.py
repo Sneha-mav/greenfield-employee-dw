@@ -167,6 +167,90 @@ def assign_employee_form(projects: list) -> Optional[dict]:
     )
 
 
+COMMON_ROLES = [
+    "Developer", "Senior Developer", "Tech Lead", "Project Manager",
+    "Business Analyst", "QA Engineer", "DevOps Engineer", "Data Engineer",
+    "Designer", "Scrum Master", "Product Owner", "Consultant", "Custom...",
+]
+
+
+def assign_multiple_employees_form(projects: list) -> Optional[list]:
+    """Render a dynamic form to assign multiple employees to one project.
+    Returns a list of assignment dicts on submit, None otherwise.
+    """
+    proj_map = {f"[{p['project_id']}] {p['project_name']}": p["project_id"]
+                for p in projects}
+
+    # ── Project + dates (outside form so Add row button works) ───────────────
+    c1, c2 = st.columns(2)
+    proj_label = c1.selectbox("Project *", list(proj_map.keys()), key="bulk_project")
+    c3, c4 = st.columns(2)
+    start_date = c3.date_input("Assignment Start *", value=date.today(), key="bulk_start")
+    end_date   = c4.date_input("Assignment End (optional)", value=None, key="bulk_end")
+
+    # ── Dynamic employee rows ─────────────────────────────────────────────────
+    if "bulk_employee_rows" not in st.session_state:
+        st.session_state["bulk_employee_rows"] = 1
+
+    st.markdown("#### Employees")
+    rows = []
+    for i in range(st.session_state["bulk_employee_rows"]):
+        st.markdown(f"**Employee {i + 1}**")
+        r1, r2, r3 = st.columns([1, 2, 1])
+        emp_id     = r1.number_input("Employee ID *", min_value=1, step=1,
+                                     key=f"bulk_emp_id_{i}")
+        role_sel   = r2.selectbox("Role *", COMMON_ROLES, key=f"bulk_role_{i}")
+        alloc      = r3.slider("Allocation %", min_value=10, max_value=100,
+                               value=100, step=10, key=f"bulk_alloc_{i}")
+        custom_role = ""
+        if role_sel == "Custom...":
+            custom_role = st.text_input("Custom role *", key=f"bulk_custom_{i}")
+        rows.append((emp_id, role_sel, alloc, custom_role))
+
+    # ── Add / Remove row buttons ──────────────────────────────────────────────
+    btn1, btn2, btn3 = st.columns([1, 1, 4])
+    if btn1.button("＋ Add employee", key="bulk_add_row"):
+        st.session_state["bulk_employee_rows"] += 1
+        st.rerun()
+    if btn2.button("－ Remove last", key="bulk_remove_row",
+                   disabled=st.session_state["bulk_employee_rows"] <= 1):
+        st.session_state["bulk_employee_rows"] -= 1
+        st.rerun()
+
+    st.divider()
+    submitted = st.button("Assign all employees", type="primary",
+                          use_container_width=True, key="bulk_submit")
+
+    if not submitted:
+        return None
+
+    # ── Validate ──────────────────────────────────────────────────────────────
+    assignments = []
+    errors = []
+    for i, (emp_id, role_sel, alloc, custom_role) in enumerate(rows):
+        role = custom_role.strip() if role_sel == "Custom..." else role_sel
+        if not role:
+            errors.append(f"Employee {i + 1}: role is required.")
+            continue
+        assignments.append(dict(
+            project_id=proj_map[proj_label],
+            employee_id=int(emp_id),
+            role_on_project=role,
+            allocation_pct=int(alloc),
+            start_date=start_date,
+            end_date=end_date,
+        ))
+
+    if errors:
+        for e in errors:
+            st.error(e)
+        return None
+
+    # Reset row count on successful submit
+    st.session_state["bulk_employee_rows"] = 1
+    return assignments
+
+
 # ── Performance review ────────────────────────────────────────────────────────
 def submit_review_form(projects: list) -> Optional[dict]:
     """Render the performance-review submission form."""
