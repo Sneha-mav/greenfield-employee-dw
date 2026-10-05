@@ -276,29 +276,18 @@ def reset_dashboard_filters(year_values: list[int]) -> None:
         filter_min_reviews=3,
     )
     if year_values:
-        st.session_state["filter_years"] = (year_values[0], year_values[-1])
+        st.session_state["filter_year_from"] = year_values[0]
+        st.session_state["filter_year_to"]   = year_values[-1]
 
-
-# Guard against stale/invalid filter_years in session state before widget is created
-if years:
-    _fy = st.session_state.get("filter_years")
-    if not isinstance(_fy, (tuple, list)) or len(_fy) != 2:
-        st.session_state["filter_years"] = (int(years[0]), int(years[-1]))
-    else:
-        # Ensure stored values are plain int — not Decimal or numpy int
-        _y0, _y1 = int(_fy[0]), int(_fy[1])
-        # Also ensure stored values are still valid options in the current years list
-        if _y0 not in years or _y1 not in years:
-            st.session_state["filter_years"] = (int(years[0]), int(years[-1]))
-        elif (_y0, _y1) != (_fy[0], _fy[1]):
-            st.session_state["filter_years"] = (_y0, _y1)
 
 with st.sidebar:
     st.divider()
     st.subheader("Filters")
     st.selectbox("Department", departments, key="filter_department")
     if years:
-        st.select_slider("Review years", years, key="filter_years")
+        c1, c2 = st.columns(2)
+        c1.selectbox("From year", years, index=0, key="filter_year_from")
+        c2.selectbox("To year",   years, index=len(years) - 1, key="filter_year_to")
     st.selectbox("Project status", project_statuses, key="filter_project_status")
     st.slider("Minimum reviews", 3, 20, key="filter_min_reviews")
     st.slider("Retention review threshold", 1.0, 3.0, step=0.1, key="filter_satisfaction_threshold")
@@ -313,10 +302,15 @@ with st.sidebar:
         load_dashboard_data.clear()
         st.rerun()
 
-selected_years = st.session_state.get("filter_years", (years[0], years[-1]) if years else (None, None))
-if not isinstance(selected_years, (tuple, list)) or len(selected_years) != 2:
-    selected_years = (years[0], years[-1]) if years else (None, None)
-selected_years = (int(selected_years[0]), int(selected_years[1]))
+if years:
+    year_from = int(st.session_state.get("filter_year_from", years[0]))
+    year_to   = int(st.session_state.get("filter_year_to",   years[-1]))
+    if year_from > year_to:
+        year_from, year_to = year_to, year_from
+    selected_years = (year_from, year_to)
+else:
+    selected_years = (None, None)
+
 trend_view = trend[trend["review_year"].astype(int).between(*selected_years)].copy() if years else trend.copy()
 attrition_view = filter_frame(attrition, department=st.session_state.filter_department)
 performers_view = filter_frame(data["performers"], department=st.session_state.filter_department)
