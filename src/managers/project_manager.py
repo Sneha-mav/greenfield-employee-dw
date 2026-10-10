@@ -104,13 +104,13 @@ class ProjectManager(BaseManager):
             self._require(cur, "projects", "project_id", project_id, "Project")
             self._require(cur, "employees", "employee_id", employee_id, "Employee")
 
-            # Check total allocation across all active assignments for this employee
-            # Active = end_date is NULL or in the future
+            # Lock active assignments for this employee to prevent concurrent over-allocation
             cur.execute(
                 "SELECT COALESCE(SUM(allocation_pct), 0) AS total_alloc "
                 "FROM assignments "
                 "WHERE employee_id = %s "
-                "AND (end_date IS NULL OR end_date >= CURDATE())",
+                "AND (end_date IS NULL OR end_date >= CURDATE()) "
+                "FOR UPDATE",
                 (employee_id,),
             )
             row = cur.fetchone()
@@ -131,6 +131,22 @@ class ProjectManager(BaseManager):
                 "allocation_pct": allocation, "start_date": start, "end_date": end,
             })
         return assignment_id
+
+    @handle_errors("get assignment")
+    def get_assignment(self, assignment_id: int) -> Optional[dict]:
+        """Return one assignment with employee and project details, or None."""
+        rows = self.db.fetch_all(
+            "SELECT a.assignment_id, a.employee_id, "
+            "CONCAT(e.first_name, ' ', e.last_name) AS employee_name, "
+            "p.project_name, a.role_on_project, a.allocation_pct, "
+            "a.start_date, a.end_date "
+            "FROM assignments a "
+            "JOIN employees e ON e.employee_id = a.employee_id "
+            "JOIN projects p ON p.project_id = a.project_id "
+            "WHERE a.assignment_id = %s",
+            (assignment_id,),
+        )
+        return rows[0] if rows else None
 
     @handle_errors("list assignments")
     def list_assignments(self, project_id: int) -> list:
