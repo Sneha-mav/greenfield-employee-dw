@@ -35,7 +35,7 @@ def require_name(value: Any, name: str) -> str:
         raise ValidationError(f"{name} must not contain numbers")
 
     # Only allow letters (Unicode), spaces, hyphens, apostrophes, dots
-    if not re.match(r"^[\w\s\-'.]+$", text, re.UNICODE):
+    if not re.match(r"^[^\W\d_][\w\s\-'.]*$", text, re.UNICODE):
         raise ValidationError(
             f"{name} contains unsupported characters. "
             "Only letters, spaces, hyphens, apostrophes and dots are allowed."
