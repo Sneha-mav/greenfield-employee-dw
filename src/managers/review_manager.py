@@ -42,12 +42,20 @@ class ReviewManager(BaseManager):
 
     @handle_errors("list reviews")
     def list_for_employee(self, employee_id: int) -> list:
-        """Return all reviews of one employee, newest first."""
-        rows = self.db.fetch_all(
-            "SELECT * FROM reviews WHERE employee_id = %s ORDER BY review_date DESC, review_id DESC",
+        """Return all reviews of one employee as dicts with employee name, newest first."""
+        return self.db.fetch_all(
+            "SELECT r.review_id, r.employee_id, "
+            "CONCAT(e.first_name, ' ', e.last_name) AS employee_name, "
+            "r.project_id, p.project_name, r.review_date, "
+            "r.performance_rating, r.review_score, "
+            "r.job_satisfaction, r.environment_satisfaction, r.salary_hike_pct "
+            "FROM reviews r "
+            "JOIN employees e ON e.employee_id = r.employee_id "
+            "LEFT JOIN projects p ON p.project_id = r.project_id "
+            "WHERE r.employee_id = %s "
+            "ORDER BY r.review_date DESC, r.review_id DESC",
             (employee_id,),
         )
-        return [Review.from_row(row) for row in rows]
 
     @handle_errors("update review")
     def update(self, review_id: int, **fields: Any) -> Review:

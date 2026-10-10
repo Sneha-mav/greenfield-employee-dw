@@ -1,5 +1,6 @@
 """Small validation helpers shared by the entity classes."""
 
+import re
 from datetime import date, datetime
 from typing import Any, Optional
 
@@ -11,6 +12,57 @@ def require_text(value: Any, name: str) -> str:
     if not isinstance(value, str) or not value.strip():
         raise ValidationError(f"{name} is required")
     return value.strip()
+
+
+def require_name(value: Any, name: str) -> str:
+    """Validate a person name field.
+
+    Rules:
+    - Must be a non-empty string
+    - Must not be numeric-only (e.g. '12345')
+    - Must not contain digits mixed with letters (e.g. 'John123')
+    - Allowed characters: letters (including Unicode), spaces, hyphens, apostrophes, dots
+    - Leading/trailing whitespace is stripped
+    """
+    text = require_text(value, name)
+
+    # Reject numeric-only names
+    if text.replace(" ", "").isdigit():
+        raise ValidationError(f"{name} must not be numeric only")
+
+    # Reject names containing any digits
+    if re.search(r"\d", text):
+        raise ValidationError(f"{name} must not contain numbers")
+
+    # Only allow letters (Unicode), spaces, hyphens, apostrophes, dots
+    if not re.match(r"^[\w\s\-'.]+$", text, re.UNICODE):
+        raise ValidationError(
+            f"{name} contains unsupported characters. "
+            "Only letters, spaces, hyphens, apostrophes and dots are allowed."
+        )
+
+    return text
+
+
+def require_email(value: Any, name: str = "email") -> str:
+    """Validate an email address.
+
+    Rules:
+    - Must be non-empty
+    - Must match standard email format: local@domain.tld
+    - Local part and domain must both be non-empty
+    - Domain must contain at least one dot
+    """
+    text = require_text(value, name)
+
+    # Basic RFC-like email regex
+    pattern = r"^[a-zA-Z0-9_.+\-]+@[a-zA-Z0-9\-]+\.[a-zA-Z0-9\-.]+$"
+    if not re.match(pattern, text):
+        raise ValidationError(
+            f"{name} is not a valid email address. Expected format: user@example.com"
+        )
+
+    return text
 
 
 def require_int_range(value: Any, name: str, low: int, high: int) -> int:

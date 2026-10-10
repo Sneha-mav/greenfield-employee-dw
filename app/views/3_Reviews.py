@@ -76,12 +76,11 @@ with tab_history:
             rm      = ReviewManager()
             reviews = rm.list_for_employee(int(emp_id))
             if reviews:
-                rows = [r.to_dict() for r in reviews]
-                df   = pd.DataFrame(rows)
+                df = pd.DataFrame(reviews)
                 c1, c2, c3, c4 = st.columns(4)
                 c1.metric("Total Reviews",   len(reviews))
                 c2.metric("Avg Rating",      f"{df['performance_rating'].mean():.2f}")
-                c3.metric("Avg Score",       f"{df['review_score'].mean():.1f}")
+                c3.metric("Avg Score",       f"{df['review_score'].mean():.1f}" if df['review_score'].notna().any() else "N/A")
                 c4.metric("High Performers", int((df["performance_rating"] >= 4).sum()))
                 st.divider()
             employee_reviews_table(reviews)
