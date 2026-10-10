@@ -103,6 +103,27 @@ class ProjectManager(BaseManager):
         with self.db.transaction() as cur:
             self._require(cur, "projects", "project_id", project_id, "Project")
             self._require(cur, "employees", "employee_id", employee_id, "Employee")
+
+            # Check total allocation across all active assignments for this employee
+            # Active = end_date is NULL or in the future
+            cur.execute(
+                "SELECT COALESCE(SUM(allocation_pct), 0) AS total_alloc "
+                "FROM assignments "
+                "WHERE employee_id = %s "
+                "AND (end_date IS NULL OR end_date >= CURDATE())",
+                (employee_id,),
+            )
+            row = cur.fetchone()
+            current_total = int(row["total_alloc"]) if row else 0
+
+            if current_total + allocation > 100:
+                remaining = 100 - current_total
+                raise ValidationError(
+                    f"Employee {employee_id} already has {current_total}% allocation across "
+                    f"active assignments. Adding {allocation}% would exceed 100%. "
+                    f"Maximum available: {remaining}%."
+                )
+
             assignment_id = self._next_id(cur, "assignments", "assignment_id")
             self._insert(cur, "assignments", {
                 "assignment_id": assignment_id, "employee_id": employee_id,
