@@ -5,7 +5,9 @@ from typing import Any, Optional
 
 from src.db_manager import ValidationError
 from src.entities.validators import (
+    require_email,
     require_int_range,
+    require_name,
     require_positive,
     require_text,
     to_date,
@@ -69,7 +71,7 @@ class Employee:
 
     @first_name.setter
     def first_name(self, value: str) -> None:
-        self._first_name = require_text(value, "first_name")
+        self._first_name = require_name(value, "first_name")
 
     @property
     def last_name(self) -> str:
@@ -77,7 +79,7 @@ class Employee:
 
     @last_name.setter
     def last_name(self, value: str) -> None:
-        self._last_name = require_text(value, "last_name")
+        self._last_name = require_name(value, "last_name")
 
     @property
     def email(self) -> str:
@@ -85,11 +87,7 @@ class Employee:
 
     @email.setter
     def email(self, value: str) -> None:
-        text = require_text(value, "email")
-        local, _, domain = text.partition("@")
-        if not local or not domain:
-            raise ValidationError("email must contain '@' with text on both sides")
-        self._email = text
+        self._email = require_email(value, "email")
 
     @property
     def hire_date(self) -> date:
