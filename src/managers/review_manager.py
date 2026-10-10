@@ -2,7 +2,7 @@
 
 from typing import Any
 
-from src.db_manager import RecordNotFoundError
+from src.db_manager import RecordNotFoundError, ValidationError
 from src.entities.review import Review
 from src.managers.base_manager import BaseManager, handle_errors
 
@@ -17,13 +17,25 @@ class ReviewManager(BaseManager):
 
     @handle_errors("create review")
     def create(self, review: Review, refresh_warehouse: bool = False) -> Review:
-        """Insert a review (next review_id if needed). The warehouse is only
-        refreshed when ``refresh_warehouse`` is True; otherwise call
-        ``refresh_warehouse()`` later, e.g. from the UI."""
+        """Insert a review. Rejects duplicate (employee_id, review_date, project_id)."""
         with self.db.transaction() as cur:
             self._require(cur, "employees", "employee_id", review.employee_id, "Employee")
             if review.project_id is not None:
                 self._require(cur, "projects", "project_id", review.project_id, "Project")
+
+            # Prevent duplicate reviews for the same employee/date/project combination
+            cur.execute(
+                "SELECT review_id FROM reviews "
+                "WHERE employee_id = %s AND review_date = %s AND "
+                "COALESCE(project_id, -1) = COALESCE(%s, -1)",
+                (review.employee_id, review.review_date, review.project_id),
+            )
+            if cur.fetchone():
+                raise ValidationError(
+                    f"A review for employee {review.employee_id} on "
+                    f"{review.review_date} already exists for this project."
+                )
+
             if review.review_id is None:
                 review.review_id = self._next_id(cur, "reviews", "review_id")
             self._insert(cur, "reviews", review.to_dict())
