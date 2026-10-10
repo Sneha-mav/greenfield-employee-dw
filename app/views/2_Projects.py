@@ -93,31 +93,20 @@ with tab_search:
     assignment_id_input = st.number_input("Assignment ID", min_value=1, step=1, key="search_assignment_id")
     if st.button("Search", use_container_width=True, key="btn_search_assignment"):
         try:
-            pm   = ProjectManager()
-            rows = pm.db.fetch_all(
-                "SELECT a.assignment_id, a.employee_id, "
-                "CONCAT(e.first_name, ' ', e.last_name) AS employee_name, "
-                "p.project_name, a.role_on_project, a.allocation_pct, "
-                "a.start_date, a.end_date "
-                "FROM assignments a "
-                "JOIN employees e ON e.employee_id = a.employee_id "
-                "JOIN projects p ON p.project_id = a.project_id "
-                "WHERE a.assignment_id = %s",
-                (int(assignment_id_input),),
-            )
-            if not rows:
+            pm  = ProjectManager()
+            row = pm.get_assignment(int(assignment_id_input))
+            if not row:
                 st.warning(f"No assignment found with ID {int(assignment_id_input)}.")
             else:
-                row = rows[0]
                 c1, c2, c3 = st.columns(3)
-                c1.metric("Assignment ID",  str(row["assignment_id"]))
-                c2.metric("Employee",       row["employee_name"])
-                c3.metric("Employee ID",    str(row["employee_id"]))
-                c1.metric("Project",        row["project_name"])
-                c2.metric("Role",           row["role_on_project"])
-                c3.metric("Allocation %",   str(row["allocation_pct"]))
-                c1.metric("Start Date",     str(row["start_date"]))
-                c2.metric("End Date",       str(row["end_date"]) if row["end_date"] else "Ongoing")
+                c1.metric("Assignment ID", str(row["assignment_id"]))
+                c2.metric("Employee",      row["employee_name"])
+                c3.metric("Employee ID",   str(row["employee_id"]))
+                c1.metric("Project",       row["project_name"])
+                c2.metric("Role",          row["role_on_project"])
+                c3.metric("Allocation %",  str(row["allocation_pct"]))
+                c1.metric("Start Date",    str(row["start_date"]))
+                c2.metric("End Date",      str(row["end_date"]) if row["end_date"] else "Ongoing")
         except DatabaseError as exc:
             st.error(str(exc))
 

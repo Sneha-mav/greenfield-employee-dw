@@ -2,7 +2,7 @@
 
 from typing import Any
 
-from src.db_manager import RecordNotFoundError
+from src.db_manager import RecordNotFoundError, ValidationError
 from src.entities.review import Review
 from src.managers.base_manager import BaseManager, handle_errors
 
@@ -17,13 +17,25 @@ class ReviewManager(BaseManager):
 
     @handle_errors("create review")
     def create(self, review: Review, refresh_warehouse: bool = False) -> Review:
-        """Insert a review (next review_id if needed). The warehouse is only
-        refreshed when ``refresh_warehouse`` is True; otherwise call
-        ``refresh_warehouse()`` later, e.g. from the UI."""
+        """Insert a review. Rejects duplicate (employee_id, review_date, project_id)."""
         with self.db.transaction() as cur:
             self._require(cur, "employees", "employee_id", review.employee_id, "Employee")
             if review.project_id is not None:
                 self._require(cur, "projects", "project_id", review.project_id, "Project")
+
+            # Prevent duplicate reviews for the same employee/date/project combination
+            cur.execute(
+                "SELECT review_id FROM reviews "
+                "WHERE employee_id = %s AND review_date = %s AND "
+                "COALESCE(project_id, -1) = COALESCE(%s, -1)",
+                (review.employee_id, review.review_date, review.project_id),
+            )
+            if cur.fetchone():
+                raise ValidationError(
+                    f"A review for employee {review.employee_id} on "
+                    f"{review.review_date} already exists for this project."
+                )
+
             if review.review_id is None:
                 review.review_id = self._next_id(cur, "reviews", "review_id")
             self._insert(cur, "reviews", review.to_dict())
@@ -42,12 +54,20 @@ class ReviewManager(BaseManager):
 
     @handle_errors("list reviews")
     def list_for_employee(self, employee_id: int) -> list:
-        """Return all reviews of one employee, newest first."""
-        rows = self.db.fetch_all(
-            "SELECT * FROM reviews WHERE employee_id = %s ORDER BY review_date DESC, review_id DESC",
+        """Return all reviews of one employee as dicts with employee name, newest first."""
+        return self.db.fetch_all(
+            "SELECT r.review_id, r.employee_id, "
+            "CONCAT(e.first_name, ' ', e.last_name) AS employee_name, "
+            "r.project_id, p.project_name, r.review_date, "
+            "r.performance_rating, r.review_score, "
+            "r.job_satisfaction, r.environment_satisfaction, r.salary_hike_pct "
+            "FROM reviews r "
+            "JOIN employees e ON e.employee_id = r.employee_id "
+            "LEFT JOIN projects p ON p.project_id = r.project_id "
+            "WHERE r.employee_id = %s "
+            "ORDER BY r.review_date DESC, r.review_id DESC",
             (employee_id,),
         )
-        return [Review.from_row(row) for row in rows]
 
     @handle_errors("update review")
     def update(self, review_id: int, **fields: Any) -> Review:
