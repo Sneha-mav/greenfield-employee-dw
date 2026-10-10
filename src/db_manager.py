@@ -35,19 +35,20 @@ class DatabaseConnection:
                 cls._instance._pool = None
         return cls._instance
     def _get_pool(self) -> pooling.MySQLConnectionPool:
-        """Create the pool on first use, reading settings from .env."""
+        """Create the pool on first use, reading settings from config."""
         with self._lock:
             if self._pool is None:
-                load_dotenv()
+                from src.config import get_db_config
                 try:
+                    cfg = get_db_config()
                     self._pool = pooling.MySQLConnectionPool(
                         pool_name="dw_pool",
                         pool_size=self.POOL_SIZE,
-                        host=os.getenv("DB_HOST", "localhost"),
-                        port=int(os.getenv("DB_PORT", "3306")),
-                        user=os.getenv("DB_USER"),
-                        password=os.getenv("DB_PASSWORD"),
-                        database=os.getenv("DB_NAME"),
+                        host=cfg["host"],
+                        port=cfg["port"],
+                        user=cfg["user"],
+                        password=cfg["password"],
+                        database=cfg["database"],
                         autocommit=False,
                     )
                 except (MySQLError, ValueError) as exc:

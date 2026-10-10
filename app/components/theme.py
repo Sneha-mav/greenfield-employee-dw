@@ -246,8 +246,12 @@ def inject_css() -> None:
             padding: 4px 8px 0;
         }}
         /* ── Plotly modebar ─────────────────────────────────────────── */
-        .modebar {{
+        .modebar-container {{
             background: transparent !important;
+        }}
+        .modebar-group {{
+            background: transparent !important;
+            box-shadow: none !important;
         }}
         .modebar-btn {{
             background: transparent !important;

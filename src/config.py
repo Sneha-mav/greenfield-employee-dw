@@ -1,8 +1,8 @@
 """Single place that knows how to reach the database.
 
 Order of lookup:
-1. Environment variables / .env (local development, scripts)
-2. st.secrets["db"] (Streamlit Cloud)
+1. st.secrets["db"] (Streamlit Cloud) — checked first
+2. Environment variables / .env (local development, scripts)
 """
 
 from __future__ import annotations
@@ -23,6 +23,26 @@ def _to_bool(v) -> bool:
 
 
 def get_db_config() -> dict:
+    # Check Streamlit secrets FIRST (Streamlit Cloud)
+    # This must come before env vars because load_dotenv() sets DB_HOST=localhost
+    # from .env which would otherwise take priority on Streamlit Cloud.
+    try:
+        import streamlit as st
+        if hasattr(st, "secrets") and "db" in st.secrets:
+            s = st.secrets["db"]
+            return {
+                "host": s["host"],
+                "port": int(s.get("port", 3306)),
+                "user": s["user"],
+                "password": s.get("password", ""),
+                "database": s["database"],
+                "ssl": _to_bool(s.get("ssl", False)),
+                "ssl_ca": s.get("ssl_ca") or None,
+            }
+    except Exception:
+        pass
+
+    # Fall back to environment variables / .env (local development)
     if os.getenv("DB_HOST"):
         return {
             "host": os.environ["DB_HOST"],
@@ -33,24 +53,11 @@ def get_db_config() -> dict:
             "ssl": _to_bool(os.getenv("DB_SSL", "false")),
             "ssl_ca": os.getenv("DB_SSL_CA") or None,
         }
-    try:
-        import streamlit as st
 
-        s = st.secrets["db"]
-    except Exception as exc:  # no env vars and no secrets
-        raise RuntimeError(
-            "Database credentials not found. Create .env (local) or set "
-            "st.secrets['db'] (Streamlit Cloud)."
-        ) from exc
-    return {
-        "host": s["host"],
-        "port": int(s.get("port", 3306)),
-        "user": s["user"],
-        "password": s.get("password", ""),
-        "database": s["database"],
-        "ssl": _to_bool(s.get("ssl", False)),
-        "ssl_ca": s.get("ssl_ca") or None,
-    }
+    raise RuntimeError(
+        "Database credentials not found. Create .env (local) or set "
+        "st.secrets['db'] (Streamlit Cloud)."
+    )
 
 
 def get_engine() -> Engine:
@@ -73,12 +80,7 @@ _shared_engine = None
 
 
 def get_shared_engine() -> Engine:
-    """Return a module-level cached SQLAlchemy engine for pd.read_sql() calls.
-
-    Use this in Streamlit pages that need a DataFrame directly:
-
-        df = pd.read_sql(sql, get_shared_engine())
-    """
+    """Return a module-level cached SQLAlchemy engine for pd.read_sql() calls."""
     global _shared_engine
     if _shared_engine is None:
         _shared_engine = get_engine()

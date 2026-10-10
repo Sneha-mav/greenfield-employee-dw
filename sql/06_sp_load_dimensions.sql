@@ -63,10 +63,12 @@ CREATE PROCEDURE sp_load_dim_employee(IN p_employee_id INT)
 BEGIN
     DECLARE EXIT HANDLER FOR SQLEXCEPTION
     BEGIN
+        SET SESSION sql_require_primary_key = 1;
         ROLLBACK;
         DROP TEMPORARY TABLE IF EXISTS tmp_emp_versions;
         RESIGNAL;
     END;
+    SET SESSION sql_require_primary_key = 0;
     DROP TEMPORARY TABLE IF EXISTS tmp_emp_versions;
     CREATE TEMPORARY TABLE tmp_emp_versions (
         employee_id     INT         NOT NULL,
@@ -168,5 +170,6 @@ BEGIN
            AND d.attrition <=> e.attrition);
     COMMIT;
     DROP TEMPORARY TABLE IF EXISTS tmp_emp_versions;
+    SET SESSION sql_require_primary_key = 1;
 END//
 DELIMITER ;
