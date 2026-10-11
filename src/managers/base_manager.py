@@ -42,8 +42,10 @@ class BaseManager(DBClient):
         return int(cur.fetchone()["n"])
 
     def _next_id(self, cur: Any, table: str, column: str) -> int:
-        """COALESCE(MAX(id), 0) + 1, to be used inside the inserting transaction."""
-        cur.execute(f"SELECT COALESCE(MAX({column}), 0) + 1 AS next_id FROM {table}")
+        """Get next ID safely using SELECT ... FOR UPDATE to prevent race conditions."""
+        cur.execute(
+            f"SELECT COALESCE(MAX({column}), 0) + 1 AS next_id FROM {table} FOR UPDATE"
+        )
         return int(cur.fetchone()["next_id"])
 
     def _insert(self, cur: Any, table: str, data: dict) -> None:
