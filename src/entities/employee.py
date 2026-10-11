@@ -5,6 +5,7 @@ from typing import Any, Optional
 
 from src.db_manager import ValidationError
 from src.entities.validators import (
+    require_city,
     require_email,
     require_int_range,
     require_name,
@@ -96,6 +97,14 @@ class Employee:
     @hire_date.setter
     def hire_date(self, value: Any) -> None:
         self._hire_date = to_date(value, "hire_date")
+
+    @property
+    def city(self) -> Optional[str]:
+        return self._city
+
+    @city.setter
+    def city(self, value: Any) -> None:
+        self._city = require_city(value, "city")
 
     @property
     def job_level(self) -> int:
