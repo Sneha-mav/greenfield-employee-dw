@@ -5,7 +5,10 @@ from typing import Any, Optional
 
 from src.db_manager import ValidationError
 from src.entities.validators import (
+    require_city,
+    require_email,
     require_int_range,
+    require_name,
     require_positive,
     require_text,
     to_date,
@@ -14,8 +17,7 @@ from src.entities.validators import (
 
 
 class Employee:
-    """An employee row from the OLTP ``employees`` table.
-    """
+    """An employee row from the OLTP ``employees`` table."""
 
     FIELDS = (
         "employee_id", "first_name", "last_name", "email", "gender", "age",
@@ -63,13 +65,14 @@ class Employee:
         self.years_at_company = years_at_company
 
     # ----- validated properties ---------------------------------------------
+
     @property
     def first_name(self) -> str:
         return self._first_name
 
     @first_name.setter
     def first_name(self, value: str) -> None:
-        self._first_name = require_text(value, "first_name")
+        self._first_name = require_name(value, "first_name")
 
     @property
     def last_name(self) -> str:
@@ -77,7 +80,7 @@ class Employee:
 
     @last_name.setter
     def last_name(self, value: str) -> None:
-        self._last_name = require_text(value, "last_name")
+        self._last_name = require_name(value, "last_name")
 
     @property
     def email(self) -> str:
@@ -85,11 +88,7 @@ class Employee:
 
     @email.setter
     def email(self, value: str) -> None:
-        text = require_text(value, "email")
-        local, _, domain = text.partition("@")
-        if not local or not domain:
-            raise ValidationError("email must contain '@' with text on both sides")
-        self._email = text
+        self._email = require_email(value, "email")
 
     @property
     def hire_date(self) -> date:
@@ -98,6 +97,14 @@ class Employee:
     @hire_date.setter
     def hire_date(self, value: Any) -> None:
         self._hire_date = to_date(value, "hire_date")
+
+    @property
+    def city(self) -> Optional[str]:
+        return self._city
+
+    @city.setter
+    def city(self, value: Any) -> None:
+        self._city = require_city(value, "city")
 
     @property
     def job_level(self) -> int:
@@ -132,6 +139,7 @@ class Employee:
         self._attrition = to_flag(value, "attrition")
 
     # ----- behaviour ----------------------------------------------------------
+
     @property
     def full_name(self) -> str:
         """First and last name joined."""
@@ -143,6 +151,7 @@ class Employee:
         return self.attrition == 0
 
     # ----- conversion ---------------------------------------------------------
+
     @classmethod
     def from_row(cls, row: dict) -> "Employee":
         """Build an Employee from a database row (extra keys are ignored)."""
