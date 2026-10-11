@@ -4,7 +4,7 @@ from datetime import date
 from typing import Any, Optional
 
 from src.db_manager import ValidationError
-from src.entities.validators import require_text, to_date, require_project_name
+from src.entities.validators import require_text, to_date
 
 
 class Project:
@@ -37,7 +37,7 @@ class Project:
 
     @project_name.setter
     def project_name(self, value: str) -> None:
-        self._project_name = require_project_name(value, "project_name")
+        self._project_name = require_text(value, "project_name")
 
     @property
     def status(self) -> str:
