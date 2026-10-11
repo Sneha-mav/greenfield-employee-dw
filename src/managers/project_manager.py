@@ -103,6 +103,27 @@ class ProjectManager(BaseManager):
         with self.db.transaction() as cur:
             self._require(cur, "projects", "project_id", project_id, "Project")
             self._require(cur, "employees", "employee_id", employee_id, "Employee")
+
+            # Lock active assignments for this employee to prevent concurrent over-allocation
+            cur.execute(
+                "SELECT COALESCE(SUM(allocation_pct), 0) AS total_alloc "
+                "FROM assignments "
+                "WHERE employee_id = %s "
+                "AND (end_date IS NULL OR end_date >= CURDATE()) "
+                "FOR UPDATE",
+                (employee_id,),
+            )
+            row = cur.fetchone()
+            current_total = int(row["total_alloc"]) if row else 0
+
+            if current_total + allocation > 100:
+                remaining = 100 - current_total
+                raise ValidationError(
+                    f"Employee {employee_id} already has {current_total}% allocation across "
+                    f"active assignments. Adding {allocation}% would exceed 100%. "
+                    f"Maximum available: {remaining}%."
+                )
+
             assignment_id = self._next_id(cur, "assignments", "assignment_id")
             self._insert(cur, "assignments", {
                 "assignment_id": assignment_id, "employee_id": employee_id,
@@ -110,6 +131,22 @@ class ProjectManager(BaseManager):
                 "allocation_pct": allocation, "start_date": start, "end_date": end,
             })
         return assignment_id
+
+    @handle_errors("get assignment")
+    def get_assignment(self, assignment_id: int) -> Optional[dict]:
+        """Return one assignment with employee and project details, or None."""
+        rows = self.db.fetch_all(
+            "SELECT a.assignment_id, a.employee_id, "
+            "CONCAT(e.first_name, ' ', e.last_name) AS employee_name, "
+            "p.project_name, a.role_on_project, a.allocation_pct, "
+            "a.start_date, a.end_date "
+            "FROM assignments a "
+            "JOIN employees e ON e.employee_id = a.employee_id "
+            "JOIN projects p ON p.project_id = a.project_id "
+            "WHERE a.assignment_id = %s",
+            (assignment_id,),
+        )
+        return rows[0] if rows else None
 
     @handle_errors("list assignments")
     def list_assignments(self, project_id: int) -> list:

@@ -140,25 +140,42 @@ def assignments_table(df: pd.DataFrame) -> None:
     )
 
 
-def employee_reviews_table(df: pd.DataFrame) -> None:
-    display = records_to_frame(df)
+def employee_reviews_table(records) -> None:
+    display = records_to_frame(records)
     if display.empty:
         st.info("No reviews found for this employee.")
         return
 
+    # Replace None/NaN in optional columns with readable placeholders
+    for col in ["review_score", "job_satisfaction", "environment_satisfaction",
+                "salary_hike_pct", "project_name"]:
+        if col in display.columns:
+            display[col] = display[col].where(display[col].notna(), other=None)
+
+    col_config = {
+        "review_id":                st.column_config.NumberColumn("Review ID"),
+        "employee_name":            st.column_config.TextColumn("Employee"),
+        "review_date":              st.column_config.DateColumn("Review Date", format="MMM D, YYYY"),
+        "project_name":             st.column_config.TextColumn("Project"),
+        "performance_rating":       st.column_config.NumberColumn("Rating", format="%d / 5"),
+        "review_score":             st.column_config.ProgressColumn(
+            "Score", min_value=0, max_value=100, format="%.0f"
+        ),
+        "job_satisfaction":         st.column_config.NumberColumn("Job Sat.", format="%d / 4"),
+        "environment_satisfaction": st.column_config.NumberColumn("Env Sat.", format="%d / 4"),
+        "salary_hike_pct":          st.column_config.NumberColumn("Hike %", format="%.1f%%"),
+    }
+
+    # Only show columns that exist in the dataframe
+    visible_cols = [c for c in [
+        "review_id", "review_date", "employee_name", "project_name",
+        "performance_rating", "review_score",
+        "job_satisfaction", "environment_satisfaction", "salary_hike_pct",
+    ] if c in display.columns]
+
     st.dataframe(
-        display,
-        column_config={
-            "review_id":              st.column_config.NumberColumn("ID"),
-            "review_date":            st.column_config.DateColumn("Date"),
-            "performance_rating":     st.column_config.NumberColumn("Rating (1-5)"),
-            "review_score":           st.column_config.ProgressColumn(
-                "Score", min_value=0, max_value=100, format="%.0f"
-            ),
-            "job_satisfaction":       st.column_config.NumberColumn("Job Sat."),
-            "environment_satisfaction": st.column_config.NumberColumn("Env Sat."),
-            "salary_hike_pct":        st.column_config.NumberColumn("Hike %", format="%.1f%%"),
-        },
+        display[visible_cols],
+        column_config=col_config,
         use_container_width=True,
         hide_index=True,
     )
