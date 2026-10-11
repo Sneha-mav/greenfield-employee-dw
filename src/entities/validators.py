@@ -64,6 +64,30 @@ def require_email(value: Any, name: str = "email") -> str:
 
     return text
 
+def require_city(value: Any, name: str = "city") -> Optional[str]:
+    """Validate an optional city name.
+
+    None or a blank string means "no city" and returns None. Otherwise the
+    same rules as person names apply: letters, spaces, hyphens, apostrophes
+    and dots only, and no digits (so '12345' or 'Pune1' are rejected).
+    """
+    if value is None or (isinstance(value, str) and not value.strip()):
+        return None
+    return require_name(value, name)
+
+
+def require_project_name(value: Any, name: str = "project_name") -> str:
+    """Validate a project name: must contain at least one letter.
+
+    Allows 'Atlas', 'Project 7', 'A1'; rejects '123', '2024-01'.
+    """
+    text = require_text(value, name)
+    if not any(ch.isalpha() for ch in text):
+        raise ValidationError(
+            f"{name} must contain at least one letter "
+            "(e.g. 'Atlas' or 'Project 7'), not only numbers or symbols"
+        )
+    return text
 
 def require_int_range(value: Any, name: str, low: int, high: int) -> int:
     """Return value as an int within [low, high] or raise ValidationError."""

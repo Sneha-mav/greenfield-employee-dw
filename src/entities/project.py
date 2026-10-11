@@ -37,7 +37,13 @@ class Project:
 
     @project_name.setter
     def project_name(self, value: str) -> None:
-        self._project_name = require_text(value, "project_name")
+        name = require_text(value, "project_name")
+        if not any(ch.isalpha() for ch in name):
+            raise ValidationError(
+                "project_name must contain at least one letter "
+                "(e.g. 'Atlas' or 'Project 7'), not only numbers or symbols"
+            )
+        self._project_name = name
 
     @property
     def status(self) -> str:
