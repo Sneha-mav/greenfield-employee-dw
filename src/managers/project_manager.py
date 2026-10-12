@@ -99,6 +99,38 @@ class ProjectManager(BaseManager):
                 )
             cur.execute("DELETE FROM projects WHERE project_id = %s", (project_id,))
 
+    MAX_ALLOCATION = 100
+    @handle_errors("employee_capacity")
+    def _check_employee_capacity(self, cur, employee_id, allocation, start, end):
+        """Raise ValidationError if the new assignment pushes the employee over 100% on any day."""
+        cur.execute(
+            "SELECT allocation_pct, start_date, end_date FROM assignments "
+            "WHERE employee_id = %s "
+            "AND (end_date IS NULL OR end_date >= %s) "
+            "AND (%s IS NULL OR start_date <= %s)",
+            (employee_id, start, end, end),
+        )
+        existing = cur.fetchall()
+        if not existing:
+            return
+
+        # Load only changes when an assignment starts, so checking those days is enough.
+        check_days = {start} | {r["start_date"] for r in existing if r["start_date"] > start}
+        worst_day, worst_total = start, 0
+        for day in check_days:
+            total = allocation + sum(
+                (r["allocation_pct"] or 0) for r in existing
+                if r["start_date"] <= day and (r["end_date"] is None or r["end_date"] >= day)
+            )
+            if total > worst_total:
+                worst_day, worst_total = day, total
+
+        if worst_total > self.MAX_ALLOCATION:
+            raise ValidationError(
+                f"Employee {employee_id} would be allocated {worst_total}% on {worst_day} "
+                f"(max {self.MAX_ALLOCATION}%). Reduce the allocation or change the dates."
+            )
+
     @handle_errors("assign employee")
     def assign_employee(
         self, project_id: int, employee_id: int, role_on_project: str,
@@ -115,6 +147,9 @@ class ProjectManager(BaseManager):
         with self.db.transaction() as cur:
             self._require(cur, "projects", "project_id", project_id, "Project")
             self._require(cur, "employees", "employee_id", employee_id, "Employee")
+            cur.execute("SELECT 1 FROM employees WHERE employee_id = %s FOR UPDATE", (employee_id,))
+            cur.fetchall()
+            self._check_employee_capacity(cur, employee_id, allocation, start, end)
             assignment_id = self._next_id(cur, "assignments", "assignment_id")
             self._insert(cur, "assignments", {
                 "assignment_id": assignment_id, "employee_id": employee_id,
