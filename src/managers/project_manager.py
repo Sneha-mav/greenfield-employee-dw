@@ -18,6 +18,18 @@ class ProjectManager(BaseManager):
         """Insert a project, assigning the next project_id if needed."""
         with self.db.transaction() as cur:
             self._require(cur, "departments", "department_id", project.department_id, "Department")
+
+            # Prevent duplicate project names (case-insensitive)
+            cur.execute(
+                "SELECT project_id FROM projects WHERE LOWER(project_name) = LOWER(%s)",
+                (project.project_name,),
+            )
+            if cur.fetchone():
+                raise ValidationError(
+                    f"A project named '{project.project_name}' already exists. "
+                    "Please use a unique project name."
+                )
+
             if project.project_id is None:
                 project.project_id = self._next_id(cur, "projects", "project_id")
             self._insert(cur, "projects", project.to_dict())
