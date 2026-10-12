@@ -78,10 +78,21 @@ class Project:
 
     @classmethod
     def from_row(cls, row: dict) -> "Project":
-        """Build a Project from a database row (extra keys are ignored)."""
+        """Build a Project from a database row (extra keys are ignored).
+        Bypasses setter validation since DB data is already stored and trusted.
+        """
         data = {f: row[f] for f in cls.FIELDS if f in row}
         try:
-            return cls(**data)
+            instance = cls.__new__(cls)
+            instance._start_date = None
+            instance._end_date = None
+            instance.project_id = data.get("project_id")
+            instance._project_name = data.get("project_name", "")
+            instance.department_id = data.get("department_id")
+            instance._status = data.get("status", "Active")
+            instance._start_date = to_date(data.get("start_date"), "start_date", required=False)
+            instance._end_date = to_date(data.get("end_date"), "end_date", required=False)
+            return instance
         except TypeError as exc:
             raise ValidationError(f"Row is missing required project fields: {exc}") from exc
 
