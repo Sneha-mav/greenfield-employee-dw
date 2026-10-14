@@ -20,19 +20,22 @@ st.set_page_config(page_title="Enterprise Employee Analytics", layout="wide")
 # Auth gate: runs at the top of every rerun
 # =============================================================================
 
-def _clear_session(*, expired: bool = False) -> None:
-    """Remove auth state and rerun. Sets expired flag for the login page."""
+def _clear_session(*, expired: bool = False, logged_out: bool = False, do_rerun: bool = True) -> None:
+    """Remove auth state and rerun. Sets expired or logged_out flag for the login page."""
     st.session_state.pop("auth", None)
     st.session_state.pop("_current_user", None)
     st.session_state.pop("primary_navigation", None)
     set_current_user(None)
     if expired:
         st.session_state["_auth_expired"] = True
-    st.rerun()
+    if logged_out:
+        st.session_state["_logged_out"] = True
+    if do_rerun:
+        st.rerun()
 
 
 def _do_logout() -> None:
-    """Log out the current user: audit event, clear session."""
+    """Log out current user: audit event, clear session without redundant rerun callback error."""
     user = get_current_user()
     if user:
         try:
@@ -44,7 +47,7 @@ def _do_logout() -> None:
             )
         except Exception:
             pass
-    _clear_session()
+    _clear_session(logged_out=True, do_rerun=False)
 
 
 # ── Step 1: Clear stale snapshot from previous rerun ─────────────────────────

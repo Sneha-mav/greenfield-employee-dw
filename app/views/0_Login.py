@@ -10,7 +10,6 @@ from app.components.theme import (
     COLOR_ACCENT,
     COLOR_BORDER,
     COLOR_SURFACE,
-    COLOR_TEXT_MUTED,
     COLOR_TEXT_PRIMARY,
     COLOR_TEXT_SECONDARY,
     inject_css,
@@ -68,12 +67,23 @@ st.markdown(
         padding: 1.75rem !important;
         box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.05), 0 8px 10px -6px rgba(0, 0, 0, 0.02) !important;
     }}
-    .login-footer {{
+    @keyframes fadeOutLogout {{
+        0% {{ opacity: 1; max-height: 80px; transform: translateY(0); margin-bottom: 1.25rem; }}
+        70% {{ opacity: 1; max-height: 80px; transform: translateY(0); margin-bottom: 1.25rem; }}
+        100% {{ opacity: 0; max-height: 0; padding-top: 0; padding-bottom: 0; margin-bottom: 0; transform: translateY(-8px); display: none; }}
+    }}
+    .logout-banner {{
+        animation: fadeOutLogout 3s ease forwards;
+        background-color: #ECFDF5;
+        border: 1px solid #A7F3D0;
+        color: #065F46;
+        padding: 10px 16px;
+        border-radius: 8px;
+        font-size: 0.875rem;
+        font-weight: 500;
         text-align: center;
-        color: {COLOR_TEXT_MUTED};
-        font-size: 0.75rem;
-        margin-top: 1.5rem;
-        line-height: 1.5;
+        margin-bottom: 1.25rem;
+        overflow: hidden;
     }}
     </style>
     """,
@@ -97,6 +107,18 @@ with col_center:
         """,
         unsafe_allow_html=True,
     )
+
+    # Show 3-second auto-vanishing logout notice if redirected from logout
+    if st.session_state.get("_logged_out"):
+        st.session_state.pop("_logged_out", None)
+        st.markdown(
+            """
+            <div class="logout-banner">
+                👋 You have been logged out.
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
 
     # Show "expired" notice if redirected from timeout
     if st.session_state.get("_auth_expired"):
@@ -145,24 +167,3 @@ with col_center:
                     st.rerun()
             except Exception:
                 st.error(AUTH_ERROR_MESSAGE)
-
-    # Access Information & Footer
-    with st.expander("ℹ️ Access & Role Information"):
-        st.markdown(
-            """
-            * **Admin**: User management, system audit logs, full access.
-            * **HR Manager**: Employee onboarding, department transfers, compensation updates.
-            * **Project Manager**: Project planning, team allocations, performance reviews.
-            * **Analyst**: Read-only workforce analytics and reports (individual compensation masked).
-            """
-        )
-
-    st.markdown(
-        """
-        <div class="login-footer">
-            🔒 Protected by Antigravity RBAC & bcrypt security<br>
-            All access events and changes are audited.
-        </div>
-        """,
-        unsafe_allow_html=True,
-    )
