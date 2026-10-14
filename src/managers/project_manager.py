@@ -2,6 +2,7 @@
 
 from typing import Any, Optional
 
+from src.auth import requires_permission
 from src.db_manager import RecordNotFoundError, ValidationError
 from src.entities.project import Project
 from src.entities.validators import require_int_range, require_text, to_date
@@ -13,6 +14,7 @@ class ProjectManager(BaseManager):
 
     UPDATABLE = ("project_name", "department_id", "status", "start_date", "end_date")
 
+    @requires_permission("project.create")
     @handle_errors("create project")
     def create(self, project: Project, refresh_warehouse: bool = False) -> Project:
         """Insert a project, assigning the next project_id if needed."""
@@ -131,6 +133,7 @@ class ProjectManager(BaseManager):
                 f"(max {self.MAX_ALLOCATION}%). Reduce the allocation or change the dates."
             )
 
+    @requires_permission("assignment.create")
     @handle_errors("assign employee")
     def assign_employee(
         self, project_id: int, employee_id: int, role_on_project: str,

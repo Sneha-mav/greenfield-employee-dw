@@ -3,6 +3,7 @@
 from datetime import timedelta
 from typing import Any, Optional
 
+from src.auth import requires_permission
 from src.db_manager import RecordNotFoundError, ValidationError
 from src.entities.employee import Employee
 from src.entities.validators import require_int_range, require_positive, to_date
@@ -18,6 +19,7 @@ class EmployeeManager(BaseManager):
     )
 
     
+    @requires_permission("employee.onboard")
     @handle_errors("create employee")
     def create(self, employee: Employee, refresh_warehouse: bool = False) -> Employee:
         """Insert the employee and its first history row; assign the next id if needed."""
@@ -124,6 +126,7 @@ class EmployeeManager(BaseManager):
             cur.execute("DELETE FROM employees WHERE employee_id = %s", (employee_id,))
 
    
+    @requires_permission("employee.transfer")
     @handle_errors("update department")
     def update_department(
         self, employee_id: int, new_department_name: str, effective_date: Any,
@@ -135,6 +138,7 @@ class EmployeeManager(BaseManager):
             department_name=new_department_name,
         )
 
+    @requires_permission("employee.update_role")
     @handle_errors("change role or salary")
     def change_role_or_salary(
         self, employee_id: int, effective_date: Any,
