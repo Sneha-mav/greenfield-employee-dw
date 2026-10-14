@@ -2,6 +2,7 @@
 
 from typing import Any
 
+from src.auth import requires_permission
 from src.db_manager import RecordNotFoundError
 from src.entities.review import Review
 from src.managers.base_manager import BaseManager, handle_errors
@@ -15,6 +16,7 @@ class ReviewManager(BaseManager):
         "job_satisfaction", "environment_satisfaction", "salary_hike_pct",
     )
 
+    @requires_permission("review.submit")
     @handle_errors("create review")
     def create(self, review: Review, refresh_warehouse: bool = False) -> Review:
         """Insert a review (next review_id if needed). The warehouse is only

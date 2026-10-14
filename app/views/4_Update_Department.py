@@ -11,6 +11,7 @@ from app.components.theme import inject_css, section_header
 from app.components.forms import change_role_form, update_department_form
 from app.components.charts import scd2_gantt
 from app.components.tables import scd2_history_table
+from src.auth import PermissionDenied, can_show_gantt, has_permission, mask_columns
 from src.db_manager import DatabaseError, ValidationError
 from src.managers import AnalyticsManager, EmployeeManager
 
@@ -41,116 +42,140 @@ def _show_history_after_change(employee_id: int) -> None:
             emp_name = str(df.iloc[0]["full_name"]) if "full_name" in df.columns else ""
             st.divider()
             section_header("Updated Version History")
-            scd2_history_table(df)
-            st.plotly_chart(scd2_gantt(df, emp_name), use_container_width=True)
+            display_df = mask_columns(df.copy(), ["monthly_income"])
+            scd2_history_table(display_df)
+            if can_show_gantt():
+                st.plotly_chart(scd2_gantt(df, emp_name), use_container_width=True)
+            else:
+                st.info("Gantt timeline requires salary view permission.")
     except DatabaseError:
         pass  # non-critical — the change itself succeeded
 
 
 # ── Tabs ──────────────────────────────────────────────────────────────────────
-tab_dept, tab_role, tab_view = st.tabs([
-    "Department Transfer",
-    "Role / Level / Salary",
-    "History",
-])
+tabs_to_show = []
+if has_permission("employee.transfer"):
+    tabs_to_show.append("Department Transfer")
+if has_permission("employee.update_role"):
+    tabs_to_show.append("Role / Level / Salary")
+if has_permission("employee.history.view"):
+    tabs_to_show.append("History")
+
+if not tabs_to_show:
+    st.info("You do not have permission to view any tabs on this page.")
+    st.stop()
+
+tabs = st.tabs(tabs_to_show)
+tab_by_label = dict(zip(tabs_to_show, tabs))
 
 
 # ── Tab 1: Department transfer ────────────────────────────────────────────────
-with tab_dept:
-    st.caption("Transfer effective on the selected date.")
-    data = update_department_form(departments)
-    if data is not None:
-        try:
-            em = EmployeeManager()
-            em.update_department(
-                employee_id=data["employee_id"],
-                new_department_name=data["new_department_name"],
-                effective_date=data["effective_date"],
-                refresh_warehouse=True,
-            )
-            st.success(
-                f"Employee {data['employee_id']} transferred to "
-                f"**{data['new_department_name']}** effective {data['effective_date']}."
-            )
-            _show_history_after_change(data["employee_id"])
-        except ValidationError as exc:
-            st.error(f"Validation error: {exc}")
-        except DatabaseError as exc:
-            st.error(f"Database error: {exc}")
+if "Department Transfer" in tab_by_label:
+    with tab_by_label["Department Transfer"]:
+        st.caption("Transfer effective on the selected date.")
+        data = update_department_form(departments)
+        if data is not None:
+            try:
+                em = EmployeeManager()
+                em.update_department(
+                    employee_id=data["employee_id"],
+                    new_department_name=data["new_department_name"],
+                    effective_date=data["effective_date"],
+                    refresh_warehouse=True,
+                )
+                st.success(
+                    f"Employee {data['employee_id']} transferred to "
+                    f"**{data['new_department_name']}** effective {data['effective_date']}."
+                )
+                _show_history_after_change(data["employee_id"])
+            except PermissionDenied as exc:
+                st.error(f"Permission denied: {exc}")
+            except ValidationError as exc:
+                st.error(f"Validation error: {exc}")
+            except DatabaseError as exc:
+                st.error(f"Database error: {exc}")
 
 
 # ── Tab 2: Role / level / salary change ───────────────────────────────────────
-with tab_role:
-    st.caption("Select the fields to update.")
-    data = change_role_form(job_roles)
-    if data is not None:
-        try:
-            em = EmployeeManager()
-            em.change_role_or_salary(
-                employee_id=data["employee_id"],
-                effective_date=data["effective_date"],
-                job_role_name=data["job_role_name"],
-                job_level=data["job_level"],
-                monthly_income=data["monthly_income"],
-                refresh_warehouse=True,
-            )
-            parts = []
-            if data["job_role_name"]:
-                parts.append(f"role → **{data['job_role_name']}**")
-            if data["job_level"] is not None:
-                parts.append(f"level → **{data['job_level']}**")
-            if data["monthly_income"] is not None:
-                parts.append(f"income → **${data['monthly_income']:,.0f}**")
-            st.success(
-                f"Employee {data['employee_id']}: {', '.join(parts)} "
-                f"effective {data['effective_date']}."
-            )
-            _show_history_after_change(data["employee_id"])
-        except ValidationError as exc:
-            st.error(f"Validation error: {exc}")
-        except DatabaseError as exc:
-            st.error(f"Database error: {exc}")
+if "Role / Level / Salary" in tab_by_label:
+    with tab_by_label["Role / Level / Salary"]:
+        st.caption("Select the fields to update.")
+        data = change_role_form(job_roles)
+        if data is not None:
+            try:
+                em = EmployeeManager()
+                em.change_role_or_salary(
+                    employee_id=data["employee_id"],
+                    effective_date=data["effective_date"],
+                    job_role_name=data["job_role_name"],
+                    job_level=data["job_level"],
+                    monthly_income=data["monthly_income"],
+                    refresh_warehouse=True,
+                )
+                parts = []
+                if data["job_role_name"]:
+                    parts.append(f"role → **{data['job_role_name']}**")
+                if data["job_level"] is not None:
+                    parts.append(f"level → **{data['job_level']}**")
+                if data["monthly_income"] is not None:
+                    parts.append(f"income → **${data['monthly_income']:,.0f}**")
+                st.success(
+                    f"Employee {data['employee_id']}: {', '.join(parts)} "
+                    f"effective {data['effective_date']}."
+                )
+                _show_history_after_change(data["employee_id"])
+            except PermissionDenied as exc:
+                st.error(f"Permission denied: {exc}")
+            except ValidationError as exc:
+                st.error(f"Validation error: {exc}")
+            except DatabaseError as exc:
+                st.error(f"Database error: {exc}")
 
 
 # ── Tab 3: View history ───────────────────────────────────────────────────────
-with tab_view:
-    st.caption("Enter an employee ID to view changes.")
+if "History" in tab_by_label:
+    with tab_by_label["History"]:
+        st.caption("Enter an employee ID to view changes.")
 
-    col_a, _, col_b, _2 = st.columns([2, 0.1, 1, 1])
-    view_id  = col_a.number_input("Employee ID", min_value=1, step=1, key="view_scd2_id")
-    with col_b:
-        st.markdown('<div style="margin-top: 1.9rem;"></div>', unsafe_allow_html=True)
-        view_btn = st.button("Load history", use_container_width=True, key="view_scd2_btn")
+        col_a, _, col_b, _2 = st.columns([2, 0.1, 1, 1])
+        view_id  = col_a.number_input("Employee ID", min_value=1, step=1, key="view_scd2_id")
+        with col_b:
+            st.markdown('<div style="margin-top: 1.9rem;"></div>', unsafe_allow_html=True)
+            view_btn = st.button("Load history", use_container_width=True, key="view_scd2_btn")
 
-    if view_btn:
-        try:
-            am      = AnalyticsManager()
-            history = am.get_employee_scd2_history(int(view_id))
-            if not history:
-                st.warning(
-                    f"No warehouse history found for employee {view_id}. "
-                    "They may not yet be loaded into dim_employee."
-                )
-            else:
-                df       = pd.DataFrame(history)
-                versions = len(df)
-                emp_name = str(df.iloc[0]["full_name"]) if "full_name" in df.columns else ""
-
-                c1, c2, c3 = st.columns(3)
-                c1.metric("Employee",       emp_name)
-                c2.metric("Changes",  str(versions))
-                c3.metric("Currently Active",
-                           "Yes" if int(df["is_current"].max()) == 1 else "No")
-
-                scd2_history_table(df)
-                st.plotly_chart(scd2_gantt(df, emp_name), use_container_width=True)
-
-                if versions > 1:
-                    depts = df["department_name"].nunique()
-                    roles = df["job_role"].nunique()
-                    st.caption(
-                        f"{versions} recorded changes across "
-                        f"{depts} department(s) and {roles} role(s)."
+        if view_btn:
+            try:
+                am      = AnalyticsManager()
+                history = am.get_employee_scd2_history(int(view_id))
+                if not history:
+                    st.warning(
+                        f"No warehouse history found for employee {view_id}. "
+                        "They may not yet be loaded into dim_employee."
                     )
-        except DatabaseError as exc:
-            st.error(str(exc))
+                else:
+                    df       = pd.DataFrame(history)
+                    versions = len(df)
+                    emp_name = str(df.iloc[0]["full_name"]) if "full_name" in df.columns else ""
+
+                    c1, c2, c3 = st.columns(3)
+                    c1.metric("Employee",       emp_name)
+                    c2.metric("Changes",  str(versions))
+                    c3.metric("Currently Active",
+                               "Yes" if int(df["is_current"].max()) == 1 else "No")
+
+                    display_df = mask_columns(df.copy(), ["monthly_income"])
+                    scd2_history_table(display_df)
+                    if can_show_gantt():
+                        st.plotly_chart(scd2_gantt(df, emp_name), use_container_width=True)
+                    else:
+                        st.info("Gantt timeline requires salary view permission.")
+
+                    if versions > 1:
+                        depts = df["department_name"].nunique()
+                        roles = df["job_role"].nunique()
+                        st.caption(
+                            f"{versions} recorded changes across "
+                            f"{depts} department(s) and {roles} role(s)."
+                        )
+            except DatabaseError as exc:
+                st.error(str(exc))

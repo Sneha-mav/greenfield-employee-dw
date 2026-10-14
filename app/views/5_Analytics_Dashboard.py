@@ -27,6 +27,7 @@ from app.components.theme import (
     fmt_number,
     inject_css,
 )
+from src.auth import can_show_gantt, has_permission, mask_columns
 from src.db_manager import DatabaseError
 from src.managers import AnalyticsManager
 
@@ -142,14 +143,17 @@ def render_workforce(scope: dict) -> None:
                 config=PLOTLY_CONFIG,
             )
     with st.expander("Retention review queue"):
-        tables.watchlist_table(scope["watchlist"])
-        if not scope["watchlist"].empty:
-            st.download_button(
-                "Download CSV",
-                scope["watchlist"].to_csv(index=False).encode("utf-8"),
-                file_name="retention_review_queue.csv",
-                mime="text/csv",
-            )
+        if has_permission("dashboard.watchlist"):
+            tables.watchlist_table(scope["watchlist"])
+            if has_permission("dashboard.export") and not scope["watchlist"].empty:
+                st.download_button(
+                    "Download CSV",
+                    scope["watchlist"].to_csv(index=False).encode("utf-8"),
+                    file_name="retention_review_queue.csv",
+                    mime="text/csv",
+                )
+        else:
+            st.info("You do not have permission to view the retention review queue.")
 
 
 def render_project_health(scope: dict) -> None:
@@ -229,12 +233,16 @@ def render_employee_history(scope: dict) -> None:
                 st.info(f"No history found for employee {employee_id}.")
             else:
                 frame = pd.DataFrame(history)
-                tables.scd2_history_table(frame)
-                st.plotly_chart(
-                    charts.scd2_gantt(frame, str(frame.iloc[0]["full_name"])),
-                    use_container_width=True,
-                    config=PLOTLY_CONFIG,
-                )
+                display_frame = mask_columns(frame.copy(), ["monthly_income"])
+                tables.scd2_history_table(display_frame)
+                if can_show_gantt():
+                    st.plotly_chart(
+                        charts.scd2_gantt(frame, str(frame.iloc[0]["full_name"])),
+                        use_container_width=True,
+                        config=PLOTLY_CONFIG,
+                    )
+                else:
+                    st.info("Gantt timeline requires salary view permission.")
         except DatabaseError as exc:
             st.error(str(exc))
     
@@ -330,7 +338,7 @@ metrics = st.columns(4, gap="small")
 metrics[0].metric("Active employees", fmt_number(max(0, headcount - leavers), decimals=0))
 metrics[1].metric("Attrition", f"{(100 * leavers / headcount) if headcount else 0:.1f}%")
 metrics[2].metric("Performance rating", f"{latest['avg_rating']:.2f} / 5")
-metrics[3].metric("Retention flags", str(len(watchlist_view)))
+metrics[3].metric("Retention flags", str(len(watchlist_view)) if has_permission("dashboard.watchlist") else "Restricted")
 
 scope = {
     "trend": trend_view,
@@ -346,12 +354,17 @@ scope = {
     "attrition_threshold": st.session_state.filter_attrition_threshold,
 }
 
-overview, workforce, projects, history = st.tabs(TAB_NAMES)
-with overview:
-    render_overview(scope)
-with workforce:
-    render_workforce(scope)
-with projects:
-    render_project_health(scope)
-with history:
-    render_employee_history(scope)
+tabs = st.tabs(TAB_NAMES)
+tab_by_label = dict(zip(TAB_NAMES, tabs))
+if "Overview" in tab_by_label:
+    with tab_by_label["Overview"]:
+        render_overview(scope)
+if "Workforce" in tab_by_label:
+    with tab_by_label["Workforce"]:
+        render_workforce(scope)
+if "Project health" in tab_by_label:
+    with tab_by_label["Project health"]:
+        render_project_health(scope)
+if "Employee history" in tab_by_label:
+    with tab_by_label["Employee history"]:
+        render_employee_history(scope)

@@ -9,6 +9,7 @@ review, terminates them, runs the analytics, then removes every demo row.
 import logging
 from datetime import date, datetime
 
+from src.auth import override_user
 from src.db_manager import DatabaseConnection, ValidationError
 from src.entities.employee import Employee
 from src.entities.review import Review
@@ -31,6 +32,11 @@ def cleanup(db: DatabaseConnection, emp_id: int) -> None:
 
 
 def main() -> None:
+    with override_user({"user_id": 1, "username": "admin", "role": "admin", "is_active": True}):
+        _run_demo()
+
+
+def _run_demo() -> None:
     logging.basicConfig(level=logging.INFO, format="%(levelname)s %(name)s: %(message)s")
     db = DatabaseConnection()
     employees, reviews, analytics = EmployeeManager(), ReviewManager(), AnalyticsManager()
